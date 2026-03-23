@@ -139,8 +139,6 @@ export function KanbanBoard({ userRole, username, rollNumber }: KanbanBoardProps
     columns.forEach(colId => {
       const baseCol = collection(db, "boards", activeBoardId, "columns", colId, "tasks")
       
-      // Privacy logic: Board Owners (usually Teachers) see all tasks on their board.
-      // Members (Students) only see tasks where they are the creatorId.
       const q = (boardData.ownerId === user.uid)
         ? query(baseCol, where("ownerId", "==", user.uid))
         : query(baseCol, where("creatorId", "==", user.uid))
@@ -516,7 +514,10 @@ export function KanbanBoard({ userRole, username, rollNumber }: KanbanBoardProps
                   <SelectItem value="all">All Members</SelectItem>
                   {workspaceMembers.map(member => (
                     <SelectItem key={member.id} value={member.name}>
-                      {member.name}
+                      <div className="flex items-center gap-2">
+                        {member.role === 'admin' && <ShieldCheck className="h-3.5 w-3.5 text-primary" />}
+                        {member.name}
+                      </div>
                     </SelectItem>
                   ))}
                 </SelectContent>
