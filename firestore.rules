@@ -1,3 +1,4 @@
+
 /**
  * SprintSync Board Security Rules
  * 
@@ -102,7 +103,8 @@ service cloud.firestore {
     }
 
     match /boards/{boardId}/columns/{columnId}/tasks/{taskId} {
-      // Get and List are strictly filtered so students only see their own work
+      // Get and List are strictly filtered so students only see their own work.
+      // For teachers (owners), we allow listing if they own the board.
       allow get, list: if canStudentSeeTask(resource.data);
       
       // Create allowed if the user is the board owner or the creator identity matches the sender
@@ -112,12 +114,11 @@ service cloud.firestore {
       );
       
       // Update and Delete restricted to the teacher or the specific student creator
-      allow update: if canStudentSeeTask(resource.data) && (
-        request.auth.uid == resource.data.ownerId || 
-        request.auth.uid == request.resource.data.creatorId
-      );
+      allow update: if canStudentSeeTask(resource.data);
       
       allow delete: if canStudentSeeTask(resource.data);
     }
   }
 }
+
+    

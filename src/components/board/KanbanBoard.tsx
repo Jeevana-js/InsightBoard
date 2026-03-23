@@ -76,6 +76,7 @@ export function KanbanBoard({ userRole, username, rollNumber }: KanbanBoardProps
   const { toast } = useToast()
 
   const isAdmin = userRole === 'admin'
+  const isBoardOwner = boardData?.ownerId === user?.uid
   const boardTitle = isAdmin ? "All Members Board" : "Project reviewer"
   
   const roomInviteCode = activeBoardId || ""
@@ -105,7 +106,7 @@ export function KanbanBoard({ userRole, username, rollNumber }: KanbanBoardProps
       }
     }
     findBoard()
-  }, [user, isAdmin, db])
+  }, [user, db])
 
   React.useEffect(() => {
     if (!activeBoardId || !user) return
@@ -132,16 +133,17 @@ export function KanbanBoard({ userRole, username, rollNumber }: KanbanBoardProps
   }, [activeBoardId, db, user])
 
   React.useEffect(() => {
-    if (!activeBoardId || !user || isAccessRevoked) return
+    if (!activeBoardId || !user || isAccessRevoked || !boardData) return
 
     const unsubscribes: (() => void)[] = []
 
     columns.forEach(colId => {
       const baseCol = collection(db, "boards", activeBoardId, "columns", colId, "tasks")
       
-      // Teachers see all tasks in their board (where they are the ownerId)
-      // Students see ONLY tasks they created to maintain privacy from other students
-      const q = isAdmin 
+      // Critical privacy logic:
+      // If the current user is the OWNER of this specific board (Teacher), they see ALL tasks (filtered by ownerId).
+      // Otherwise (Students or non-owning Teachers), they only see tasks they CREATED.
+      const q = (boardData.ownerId === user.uid)
         ? query(baseCol, where("ownerId", "==", user.uid))
         : query(baseCol, where("creatorId", "==", user.uid))
 
@@ -167,7 +169,7 @@ export function KanbanBoard({ userRole, username, rollNumber }: KanbanBoardProps
     })
 
     return () => unsubscribes.forEach(unsub => unsub())
-  }, [activeBoardId, columns, db, user, isAccessRevoked, isAdmin])
+  }, [activeBoardId, columns, db, user, isAccessRevoked, boardData])
 
   React.useEffect(() => {
     if (!boardData || !db || isAccessRevoked) return
@@ -301,7 +303,8 @@ export function KanbanBoard({ userRole, username, rollNumber }: KanbanBoardProps
       ...newTask,
       ownerId: boardData.ownerId,
       memberIds: boardData.memberIds || [],
-      creatorId: selectedTask?.creatorId || user.uid // Ensure creator identity is preserved or set
+      creatorId: selectedTask?.creatorId || user.uid,
+      updatedAt: new Date().toISOString()
     }
 
     setDoc(taskRef, taskData, { merge: true })
@@ -352,7 +355,8 @@ export function KanbanBoard({ userRole, username, rollNumber }: KanbanBoardProps
       status: targetStatus,
       ownerId: boardData.ownerId,
       memberIds: boardData.memberIds || [],
-      creatorId: task.creatorId // Preserve creator during status changes
+      creatorId: task.creatorId || user?.uid,
+      updatedAt: new Date().toISOString()
     }
     
     setDoc(newRef, updatedTask).catch(async (err) => {
@@ -593,3 +597,5 @@ export function KanbanBoard({ userRole, username, rollNumber }: KanbanBoardProps
     </div>
   )
 }
+
+    

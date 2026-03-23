@@ -36,6 +36,7 @@ import {
 } from "@/components/ui/select"
 import { Task, TaskStatus, INITIAL_COLUMNS } from "@/types/task"
 import { generateTaskDetails } from "@/ai/flows/ai-task-description-generator"
+import { useUser } from "@/firebase"
 
 const taskSchema = z.object({
   title: z.string().min(1, "Title is required").min(3, "Title must be at least 3 characters"),
@@ -76,6 +77,7 @@ export function TaskDialog({
   isAdmin = false
 }: TaskDialogProps) {
   const [isAiGenerating, setIsAiGenerating] = React.useState(false)
+  const { user } = useUser()
 
   const form = useForm<z.infer<typeof taskSchema>>({
     resolver: zodResolver(taskSchema),
@@ -125,6 +127,8 @@ export function TaskDialog({
   }
 
   const onSubmit = (values: z.infer<typeof taskSchema>) => {
+    if (!user) return;
+    
     const newTask: Task = {
       id: task?.id || generateRollId(),
       title: values.title,
@@ -134,6 +138,7 @@ export function TaskDialog({
       dueDate: values.dueDate ? new Date(values.dueDate).toISOString() : undefined,
       createdAt: task?.createdAt || new Date().toISOString(),
       teacherComment: values.teacherComment || "",
+      creatorId: task?.creatorId || user.uid, // Explicitly track creator for privacy rules
     }
     onSave(newTask)
     onOpenChange(false)
@@ -328,3 +333,5 @@ export function TaskDialog({
     </Dialog>
   )
 }
+
+    
