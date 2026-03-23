@@ -31,7 +31,6 @@ import { useUser, useFirestore, useDoc, useMemoFirebase } from "@/firebase"
 import { doc } from "firebase/firestore"
 
 export default function SettingsPage() {
-  const [boardName, setBoardName] = React.useState("SprintSync Board")
   const [members, setMembers] = React.useState<Member[]>([])
   const [hasCopied, setHasCopied] = React.useState(false)
   
@@ -77,13 +76,6 @@ export default function SettingsPage() {
     setTimeout(() => setHasCopied(false), 2000)
   }
 
-  const handleSaveGeneral = () => {
-    toast({
-      title: "Settings Saved",
-      description: "General board settings have been updated.",
-    })
-  }
-
   const handleUpdateRole = (memberId: string, newRole: 'Admin' | 'Member') => {
     setMembers(members.map(m => m.id === memberId ? { ...m, role: newRole } : m))
     toast({
@@ -122,103 +114,101 @@ export default function SettingsPage() {
           <div className="h-4 w-[1px] bg-border mx-2" />
           <h1 className="text-xl font-bold tracking-tight">Board Settings</h1>
         </div>
-        <Button onClick={handleSaveGeneral}>
-          <Save className="h-4 w-4 mr-2" />
-          Save Changes
-        </Button>
       </header>
 
       <main className="flex-1 max-w-6xl w-full mx-auto p-6 md:p-8">
-        <Tabs defaultValue="general" className="flex flex-col md:flex-row gap-8 items-start">
-          <TabsList className="flex flex-col h-auto bg-transparent border-none p-0 gap-1 min-w-[200px] items-start sticky top-24 self-start">
+        <Tabs defaultValue="general" className="flex flex-col gap-8">
+          <TabsList className="flex h-auto bg-transparent border-none p-0 gap-4 w-fit mx-auto sticky top-24 z-10 bg-background/80 backdrop-blur-sm rounded-full px-6 py-2 border shadow-sm">
             <TabsTrigger 
               value="general" 
-              className="w-full justify-start gap-2 px-4 py-3 data-[state=active]:bg-muted/50 data-[state=active]:text-primary"
+              className="gap-2 px-4 py-2 data-[state=active]:bg-primary data-[state=active]:text-white rounded-full transition-all"
             >
               <SettingsIcon className="h-4 w-4" />
               General
             </TabsTrigger>
             <TabsTrigger 
               value="members" 
-              className="w-full justify-start gap-2 px-4 py-3 data-[state=active]:bg-muted/50 data-[state=active]:text-primary"
+              className="gap-2 px-4 py-2 data-[state=active]:bg-primary data-[state=active]:text-white rounded-full transition-all"
             >
               <Users className="h-4 w-4" />
               Member Access
             </TabsTrigger>
             <TabsTrigger 
               value="admin" 
-              className="w-full justify-start gap-2 px-4 py-3 data-[state=active]:bg-muted/50 data-[state=active]:text-primary"
+              className="gap-2 px-4 py-2 data-[state=active]:bg-primary data-[state=active]:text-white rounded-full transition-all"
             >
               <Shield className="h-4 w-4" />
               Admin Controls
             </TabsTrigger>
           </TabsList>
 
-          <div className="flex-1 space-y-6">
-            <TabsContent value="general" className="mt-0 space-y-6">
+          <div className="max-w-4xl w-full mx-auto">
+            <TabsContent value="general" className="mt-0 space-y-6 animate-in fade-in slide-in-from-bottom-2">
               <Card>
                 <CardHeader>
-                  <CardTitle>Board Configuration</CardTitle>
+                  <CardTitle>Profile Details</CardTitle>
                   <CardDescription>
-                    Manage basic details about your workspace.
+                    Your account information within this workspace.
                   </CardDescription>
                 </CardHeader>
-                <CardContent className="space-y-4">
+                <CardContent className="space-y-6">
                   <div className="space-y-2">
-                    <Label htmlFor="board-name">Board Name</Label>
+                    <Label htmlFor="username">Username</Label>
                     <Input 
-                      id="board-name" 
-                      value={boardName} 
-                      onChange={(e) => setBoardName(e.target.value)}
+                      id="username" 
+                      value={profile?.username || ""} 
+                      readOnly
+                      className="bg-muted/30 border-none font-medium"
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label>Workspace Visibility</Label>
-                    <Select defaultValue="private">
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="private">Private (Invite only)</SelectItem>
-                        <SelectItem value="internal">Internal (Everyone in organization)</SelectItem>
-                        <SelectItem value="public">Public (Open to web)</SelectItem>
-                      </SelectContent>
-                    </Select>
+                    <Label>Your System Role</Label>
+                    <div className="flex items-center gap-3">
+                      <Badge variant="secondary" className="h-7 px-3 text-sm capitalize bg-primary/10 text-primary border-primary/20">
+                        {profile?.role || "Member"}
+                      </Badge>
+                      <p className="text-[11px] text-muted-foreground italic">
+                        Roles are managed at the system level and represent your workspace permissions.
+                      </p>
+                    </div>
                   </div>
                 </CardContent>
               </Card>
 
-              <Card className="border-accent/20">
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <LinkIcon className="h-5 w-5 text-accent" />
-                    Room Invitation Link
-                  </CardTitle>
-                  <CardDescription>
-                    Share this unique link to invite students to your room. They will be forced to join as Members.
-                  </CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="flex gap-2">
-                    <Input 
-                      readOnly 
-                      value={roomInviteLink} 
-                      className="bg-muted/50 border-dashed"
-                    />
-                    <Button variant="outline" size="icon" onClick={handleCopyLink} className="shrink-0">
-                      {hasCopied ? <Check className="h-4 w-4 text-emerald-500" /> : <Copy className="h-4 w-4" />}
-                    </Button>
-                  </div>
-                  <div className="rounded-lg bg-accent/5 p-3 border border-accent/10">
-                    <p className="text-[11px] text-accent font-medium leading-relaxed">
-                      <strong>Security Policy:</strong> This link is restricted. Any account created using this ID is automatically assigned the <strong>Student Member</strong> role and cannot be elevated to Teacher/Admin through this route.
-                    </p>
-                  </div>
-                </CardContent>
-              </Card>
+              {profile?.role === 'admin' && (
+                <Card className="border-accent/20 bg-accent/5 overflow-hidden">
+                  <div className="h-1 bg-accent w-full" />
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <LinkIcon className="h-5 w-5 text-accent" />
+                      Room Invitation Link
+                    </CardTitle>
+                    <CardDescription>
+                      Share this unique link to invite students. They will be forced to join as Members.
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-4 pb-6">
+                    <div className="flex gap-2">
+                      <Input 
+                        readOnly 
+                        value={roomInviteLink} 
+                        className="bg-white border-dashed font-code text-xs"
+                      />
+                      <Button variant="outline" size="icon" onClick={handleCopyLink} className="shrink-0 bg-white">
+                        {hasCopied ? <Check className="h-4 w-4 text-emerald-500" /> : <Copy className="h-4 w-4" />}
+                      </Button>
+                    </div>
+                    <div className="rounded-lg bg-white/50 p-3 border border-accent/10">
+                      <p className="text-[11px] text-accent font-medium leading-relaxed">
+                        <strong>Teacher Security:</strong> Users signing up via this link are restricted to the <strong>Student Member</strong> role.
+                      </p>
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
             </TabsContent>
 
-            <TabsContent value="members" className="mt-0 space-y-6">
+            <TabsContent value="members" className="mt-0 space-y-6 animate-in fade-in slide-in-from-bottom-2">
               <Card>
                 <CardHeader className="flex flex-row items-center justify-between">
                   <div>
@@ -301,7 +291,7 @@ export default function SettingsPage() {
               </Card>
             </TabsContent>
 
-            <TabsContent value="admin" className="mt-0 space-y-6">
+            <TabsContent value="admin" className="mt-0 space-y-6 animate-in fade-in slide-in-from-bottom-2">
               <Card className="border-destructive/20">
                 <CardHeader className="bg-destructive/5">
                   <CardTitle className="text-destructive">Danger Zone</CardTitle>
