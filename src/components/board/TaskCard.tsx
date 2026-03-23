@@ -1,7 +1,7 @@
 "use client"
 
 import * as React from "react"
-import { Calendar, User } from "lucide-react"
+import { Calendar, User, MessageSquareText } from "lucide-react"
 import { format } from "date-fns"
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
@@ -36,12 +36,20 @@ export function TaskCard({ task, onClick, onDragStart }: TaskCardProps) {
           <Badge variant="outline" className="text-[10px] py-0 font-code tracking-tighter">
             {task.id}
           </Badge>
-          {task.dueDate && (
-            <Badge variant={isOverdue ? "destructive" : "secondary"} className="text-[10px] py-0 flex items-center gap-1">
-              <Calendar className="h-2.5 w-2.5" />
-              {format(new Date(task.dueDate), "MMM d")}
-            </Badge>
-          )}
+          <div className="flex gap-1">
+            {task.teacherComment && (
+              <Badge variant="secondary" className="text-[9px] bg-amber-50 text-amber-600 border-amber-200 py-0 flex items-center gap-1">
+                <MessageSquareText className="h-2.5 w-2.5" />
+                Feedback
+              </Badge>
+            )}
+            {task.dueDate && (
+              <Badge variant={isOverdue ? "destructive" : "secondary"} className="text-[10px] py-0 flex items-center gap-1">
+                <Calendar className="h-2.5 w-2.5" />
+                {format(new Date(task.dueDate), "MMM d")}
+              </Badge>
+            )}
+          </div>
         </div>
         <CardTitle className="text-sm font-semibold leading-tight line-clamp-2">
           {task.title}
@@ -54,7 +62,6 @@ export function TaskCard({ task, onClick, onDragStart }: TaskCardProps) {
         
         <div className="flex items-center justify-between mt-auto pt-2 border-t border-muted/50">
           <div className="flex gap-2">
-            {/* Acceptance Criteria and Sub-tasks indicators removed */}
           </div>
           
           {task.assignee ? (

@@ -4,7 +4,7 @@ import * as React from "react"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import * as z from "zod"
-import { Loader2, Sparkles, Trash2 } from "lucide-react"
+import { Loader2, Sparkles, Trash2, MessageSquareQuote } from "lucide-react"
 import { format } from "date-fns"
 
 import { cn } from "@/lib/utils"
@@ -42,6 +42,7 @@ const taskSchema = z.object({
   status: z.string().min(1, "Status is required"),
   assignee: z.string().min(1, "Assignee is required"),
   dueDate: z.string().min(1, "Due Date is required"),
+  teacherComment: z.string().optional(),
 })
 
 interface TaskDialogProps {
@@ -54,6 +55,7 @@ interface TaskDialogProps {
   currentUsername?: string
   columnOptions?: string[]
   memberOptions?: string[]
+  isAdmin?: boolean
 }
 
 export function TaskDialog({ 
@@ -65,7 +67,8 @@ export function TaskDialog({
   defaultStatus, 
   currentUsername,
   columnOptions = INITIAL_COLUMNS,
-  memberOptions = []
+  memberOptions = [],
+  isAdmin = false
 }: TaskDialogProps) {
   const [isAiGenerating, setIsAiGenerating] = React.useState(false)
 
@@ -77,6 +80,7 @@ export function TaskDialog({
       status: task?.status || defaultStatus || columnOptions[0] || 'New',
       assignee: task?.assignee || currentUsername || "",
       dueDate: task?.dueDate ? format(new Date(task.dueDate), "yyyy-MM-dd") : "",
+      teacherComment: task?.teacherComment || "",
     },
   })
 
@@ -88,6 +92,7 @@ export function TaskDialog({
         status: task?.status || defaultStatus || columnOptions[0] || 'New',
         assignee: task?.assignee || currentUsername || "",
         dueDate: task?.dueDate ? format(new Date(task.dueDate), "yyyy-MM-dd") : "",
+        teacherComment: task?.teacherComment || "",
       })
     }
   }, [open, task, defaultStatus, form, currentUsername, columnOptions])
@@ -119,6 +124,7 @@ export function TaskDialog({
       assignee: values.assignee,
       dueDate: values.dueDate ? new Date(values.dueDate).toISOString() : undefined,
       createdAt: task?.createdAt || new Date().toISOString(),
+      teacherComment: values.teacherComment || "",
     }
     onSave(newTask)
     onOpenChange(false)
@@ -254,8 +260,38 @@ export function TaskDialog({
                   <FormItem>
                     <FormLabel className="text-slate-900">Detailed Description</FormLabel>
                     <FormControl>
-                      <Textarea placeholder="What needs to be done?" className="min-h-[240px] resize-none text-slate-900" {...field} />
+                      <Textarea placeholder="What needs to be done?" className="min-h-[160px] resize-none text-slate-900" {...field} />
                     </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="teacherComment"
+                render={({ field }) => (
+                  <FormItem className="bg-amber-50/50 p-4 rounded-xl border border-amber-100 space-y-3">
+                    <FormLabel className="text-amber-900 flex items-center gap-2 font-bold">
+                      <MessageSquareQuote className="h-4 w-4" />
+                      Teacher&apos;s Feedback & Comments
+                    </FormLabel>
+                    <FormControl>
+                      {isAdmin ? (
+                        <Textarea 
+                          placeholder="Add feedback for the student here..." 
+                          className="min-h-[120px] resize-none bg-white border-amber-200 focus-visible:ring-amber-400 text-slate-900" 
+                          {...field} 
+                        />
+                      ) : (
+                        <div className="p-3 bg-white/80 rounded-lg border border-amber-100 min-h-[80px] text-sm text-slate-700 leading-relaxed whitespace-pre-wrap italic">
+                          {field.value || "No teacher feedback provided yet."}
+                        </div>
+                      )}
+                    </FormControl>
+                    <p className="text-[10px] text-amber-700/70 italic px-1">
+                      {isAdmin ? "Only you can edit this section. Students can only view it." : "Only your teacher can edit this feedback section."}
+                    </p>
                     <FormMessage />
                   </FormItem>
                 )}

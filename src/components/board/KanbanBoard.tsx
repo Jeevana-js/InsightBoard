@@ -1,4 +1,3 @@
-
 "use client"
 
 import * as React from "react"
@@ -73,19 +72,16 @@ export function KanbanBoard({ userRole, username }: KanbanBoardProps) {
   
   const roomInviteCode = activeBoardId || user?.uid || ""
 
-  // 1. Find the active board ID - prioritize shared board access
   React.useEffect(() => {
     const findBoard = async () => {
       if (!user) return
       
-      // Always check for boards where I am a member first
       const q = query(collection(db, "boards"), where("memberIds", "array-contains", user.uid))
       const memberSnap = await getDocs(q)
       
       if (!memberSnap.empty) {
         setActiveBoardId(memberSnap.docs[0].id)
       } else if (isAdmin) {
-        // If not a member, check if I own a board (Teachers)
         const ownBoardRef = doc(db, "boards", user.uid)
         const ownBoardSnap = await getDoc(ownBoardRef)
         if (ownBoardSnap.exists()) {
@@ -96,7 +92,6 @@ export function KanbanBoard({ userRole, username }: KanbanBoardProps) {
     findBoard()
   }, [user, isAdmin, db])
 
-  // 2. Fetch Board Data for denormalization and real-time membership tracking
   React.useEffect(() => {
     if (!activeBoardId || !user) return
     const unsub = onSnapshot(doc(db, "boards", activeBoardId), (snap) => {
@@ -104,7 +99,6 @@ export function KanbanBoard({ userRole, username }: KanbanBoardProps) {
         const data = snap.data()
         setBoardData(data)
         
-        // Check if current user is still authorized
         const isOwner = data.ownerId === user.uid
         const isMember = data.memberIds?.includes(user.uid)
         
@@ -114,14 +108,12 @@ export function KanbanBoard({ userRole, username }: KanbanBoardProps) {
           setIsAccessRevoked(false)
         }
       } else {
-        // Board doesn't exist anymore
         setIsAccessRevoked(true)
       }
     })
     return () => unsub()
   }, [activeBoardId, db, user])
 
-  // 3. Sync Tasks from all columns in real-time with QAP-compliant filters
   React.useEffect(() => {
     if (!activeBoardId || !user || isAccessRevoked) return
 
@@ -129,8 +121,6 @@ export function KanbanBoard({ userRole, username }: KanbanBoardProps) {
 
     columns.forEach(colId => {
       const baseCol = collection(db, "boards", activeBoardId, "columns", colId, "tasks")
-      
-      // Important: Check if we are the OWNER of the board vs a Member for QAP
       const isActualOwner = user.uid === activeBoardId;
       
       const q = isActualOwner 
@@ -161,7 +151,6 @@ export function KanbanBoard({ userRole, username }: KanbanBoardProps) {
     return () => unsubscribes.forEach(unsub => unsub())
   }, [activeBoardId, columns, db, user, isAccessRevoked])
 
-  // 4. Fetch workspace members reactively whenever boardData (membership list) changes
   React.useEffect(() => {
     if (!boardData || !db || isAccessRevoked) return
     
@@ -183,13 +172,11 @@ export function KanbanBoard({ userRole, username }: KanbanBoardProps) {
         }
         setWorkspaceMembers(membersList)
         
-        // Safety: If current assignee filter is for someone no longer in the list, reset it
         setAssigneeFilter(prev => {
           if (prev === "all") return prev
           return membersList.some(m => m.name === prev) ? prev : "all"
         })
       } catch (err) {
-        // Silently skip if members list fails to load
       }
     }
 
@@ -285,7 +272,6 @@ export function KanbanBoard({ userRole, username }: KanbanBoardProps) {
       });
     }
 
-    // Always denormalize board authorization context into the task
     const taskData = {
       ...newTask,
       ownerId: boardData.ownerId,
@@ -335,7 +321,6 @@ export function KanbanBoard({ userRole, username }: KanbanBoardProps) {
     const oldRef = doc(db, "boards", activeBoardId, "columns", task.status, "tasks", taskId)
     const newRef = doc(db, "boards", activeBoardId, "columns", targetStatus, "tasks", taskId)
 
-    // Maintain denormalization during move
     const updatedTask = { 
       ...task, 
       status: targetStatus,
@@ -577,6 +562,7 @@ export function KanbanBoard({ userRole, username }: KanbanBoardProps) {
         currentUsername={username || undefined}
         columnOptions={columns}
         memberOptions={memberNames}
+        isAdmin={isAdmin}
       />
     </div>
   )

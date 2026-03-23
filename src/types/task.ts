@@ -1,4 +1,3 @@
-
 export type TaskStatus = string;
 
 export interface Task {
@@ -9,6 +8,7 @@ export interface Task {
   assignee?: string;
   dueDate?: string;
   createdAt: string;
+  teacherComment?: string;
 }
 
 export interface Member {
