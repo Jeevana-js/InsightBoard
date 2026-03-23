@@ -3,7 +3,7 @@
 import * as React from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
-import { LayoutGrid, Mail, Lock, User, Loader2, GraduationCap, Briefcase } from "lucide-react"
+import { LayoutGrid, Mail, Lock, User, Loader2, GraduationCap, Briefcase, CheckCircle2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -40,6 +40,15 @@ export default function SignupPage() {
       return
     }
 
+    if (formData.password.length < 6) {
+      toast({
+        variant: "destructive",
+        title: "Weak Password",
+        description: "Password should be at least 6 characters.",
+      })
+      return
+    }
+
     setIsLoading(true)
     try {
       const userCredential = await createUserWithEmailAndPassword(auth, formData.email, formData.password)
@@ -48,7 +57,6 @@ export default function SignupPage() {
       // Update Firebase Auth profile
       await updateProfile(user, { displayName: formData.username })
 
-      // Create User Profile in Firestore
       // Teacher -> Admin, Student -> Member
       const appRole = formData.role === 'teacher' ? 'admin' : 'member'
       
@@ -62,7 +70,7 @@ export default function SignupPage() {
       })
 
       toast({
-        title: "Account Created",
+        title: "Account Created Successfully",
         description: `Welcome to SprintSync, ${formData.username}!`,
       })
       router.push("/")
@@ -79,16 +87,16 @@ export default function SignupPage() {
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-muted/40 p-4 py-12">
-      <Card className="w-full max-w-md shadow-xl border-t-4 border-t-accent">
+      <Card className="w-full max-w-md shadow-xl border-t-4 border-t-primary">
         <CardHeader className="space-y-1 text-center">
           <div className="flex justify-center mb-4">
-            <div className="h-12 w-12 bg-accent rounded-xl flex items-center justify-center shadow-lg">
+            <div className="h-12 w-12 bg-primary rounded-xl flex items-center justify-center shadow-lg">
               <LayoutGrid className="h-7 w-7 text-white" />
             </div>
           </div>
-          <CardTitle className="text-2xl font-bold tracking-tight">Create Account</CardTitle>
+          <CardTitle className="text-2xl font-bold tracking-tight">Create Your Account</CardTitle>
           <CardDescription>
-            Join SprintSync to manage your agile workflow
+            Join the elite agile community on SprintSync
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -125,7 +133,7 @@ export default function SignupPage() {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="role">I am a...</Label>
+              <Label htmlFor="role">What is your role?</Label>
               <Select 
                 defaultValue="student" 
                 onValueChange={(val) => setFormData({...formData, role: val as any})}
@@ -136,18 +144,21 @@ export default function SignupPage() {
                 <SelectContent>
                   <SelectItem value="student">
                     <div className="flex items-center">
-                      <GraduationCap className="h-4 w-4 mr-2" />
-                      Student (Member)
+                      <GraduationCap className="h-4 w-4 mr-2 text-primary" />
+                      Student (Assigns as Member)
                     </div>
                   </SelectItem>
                   <SelectItem value="teacher">
                     <div className="flex items-center">
-                      <Briefcase className="h-4 w-4 mr-2" />
-                      Teacher (Admin)
+                      <Briefcase className="h-4 w-4 mr-2 text-primary" />
+                      Teacher (Assigns as Admin)
                     </div>
                   </SelectItem>
                 </SelectContent>
               </Select>
+              <p className="text-[10px] text-muted-foreground italic px-1">
+                Teachers receive administrative control over all member boards.
+              </p>
             </div>
 
             <div className="grid grid-cols-2 gap-4">
@@ -181,15 +192,19 @@ export default function SignupPage() {
               </div>
             </div>
 
-            <Button type="submit" className="w-full bg-accent hover:bg-accent/90 mt-4" disabled={isLoading}>
-              {isLoading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
+            <Button type="submit" className="w-full mt-4" disabled={isLoading}>
+              {isLoading ? (
+                <Loader2 className="h-4 w-4 animate-spin mr-2" />
+              ) : (
+                <CheckCircle2 className="h-4 w-4 mr-2" />
+              )}
               Create Account
             </Button>
           </form>
         </CardContent>
         <CardFooter className="flex flex-wrap items-center justify-center gap-1 text-sm text-muted-foreground">
           Already have an account? 
-          <Link href="/login" className="text-accent font-semibold hover:underline">Sign In</Link>
+          <Link href="/login" className="text-primary font-semibold hover:underline">Sign In</Link>
         </CardFooter>
       </Card>
     </div>

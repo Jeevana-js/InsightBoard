@@ -3,7 +3,7 @@
 import * as React from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
-import { Search, Plus, LayoutGrid, List, SlidersHorizontal, User as UserIcon, LogOut } from "lucide-react"
+import { Search, Plus, LayoutGrid, List, SlidersHorizontal, User as UserIcon, LogOut, ShieldCheck } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { 
@@ -76,7 +76,6 @@ interface KanbanBoardProps {
 
 export function KanbanBoard({ userRole, username }: KanbanBoardProps) {
   const [tasks, setTasks] = React.useState<Task[]>([])
-  const [boardName] = React.useState("SprintSync Board")
   const [searchQuery, setSearchQuery] = React.useState("")
   const [assigneeFilter, setAssigneeFilter] = React.useState("all")
   const [viewMode, setViewMode] = React.useState<ViewMode>('board')
@@ -93,6 +92,7 @@ export function KanbanBoard({ userRole, username }: KanbanBoardProps) {
   }, [])
 
   const isAdmin = userRole === 'admin'
+  const boardTitle = isAdmin ? "All Members Board" : "My Workspace"
 
   const filteredTasks = tasks.filter(task => {
     const matchesSearch = task.title.toLowerCase().includes(searchQuery.toLowerCase()) || 
@@ -146,20 +146,29 @@ export function KanbanBoard({ userRole, username }: KanbanBoardProps) {
   return (
     <div className="flex flex-col h-screen overflow-hidden bg-background">
       {/* Top Header/Toolbar */}
-      <header className="border-b bg-white px-6 py-4 flex flex-col gap-4">
+      <header className="border-b bg-white px-6 py-4 flex flex-col gap-4 shadow-sm relative z-20">
         <div className="flex justify-between items-center">
           <div className="flex items-center gap-4">
-            <div className="h-8 w-8 bg-primary rounded-lg flex items-center justify-center">
-              <LayoutGrid className="h-5 w-5 text-white" />
+            <div className="h-10 w-10 bg-primary rounded-xl flex items-center justify-center shadow-lg transform -rotate-3">
+              <LayoutGrid className="h-6 w-6 text-white" />
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <h1 className="text-xl font-headline font-bold text-primary tracking-tight">{boardName}</h1>
-                <Badge variant={isAdmin ? "default" : "secondary"} className="text-[10px] h-4">
-                  {isAdmin ? "Admin Board" : "Member View"}
-                </Badge>
+                <h1 className="text-xl font-bold text-primary tracking-tight">{boardTitle}</h1>
+                {isAdmin ? (
+                  <Badge className="bg-emerald-500/10 text-emerald-600 border-emerald-500/20 hover:bg-emerald-500/20 gap-1">
+                    <ShieldCheck className="h-3 w-3" />
+                    Teacher Admin
+                  </Badge>
+                ) : (
+                  <Badge variant="secondary" className="text-[10px] h-4">
+                    Student Member
+                  </Badge>
+                )}
               </div>
-              {isAdmin && <p className="text-[10px] text-muted-foreground font-medium">Viewing all member activities</p>}
+              <p className="text-[10px] text-muted-foreground font-medium uppercase tracking-widest">
+                {isAdmin ? "Global Oversight View" : "Personal Contributor Workspace"}
+              </p>
             </div>
           </div>
           <div className="flex items-center gap-3">
@@ -175,14 +184,14 @@ export function KanbanBoard({ userRole, username }: KanbanBoardProps) {
               </Link>
             </Button>
             
-            <Button onClick={() => handleAddTask('New')} className="bg-accent hover:bg-accent/90">
+            <Button onClick={() => handleAddTask('New')} className="bg-primary hover:bg-primary/90">
               <Plus className="h-4 w-4 mr-2" />
-              New Item
+              New Task
             </Button>
 
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="icon" className="rounded-full bg-muted/50">
+                <Button variant="ghost" size="icon" className="rounded-full bg-muted/50 border">
                   <UserIcon className="h-5 w-5" />
                 </Button>
               </DropdownMenuTrigger>
@@ -190,7 +199,7 @@ export function KanbanBoard({ userRole, username }: KanbanBoardProps) {
                 <DropdownMenuLabel>
                   <div className="flex flex-col">
                     <span className="font-bold">{username || "User"}</span>
-                    <span className="text-xs text-muted-foreground capitalize">{userRole}</span>
+                    <span className="text-[10px] text-muted-foreground uppercase">{userRole}</span>
                   </div>
                 </DropdownMenuLabel>
                 <DropdownMenuSeparator />
@@ -214,8 +223,8 @@ export function KanbanBoard({ userRole, username }: KanbanBoardProps) {
           <div className="relative flex-1 min-w-[200px] max-w-md">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input 
-              placeholder="Filter by title or ID..." 
-              className="pl-10 h-9 bg-muted/30"
+              placeholder="Search tasks or IDs..." 
+              className="pl-10 h-9 bg-muted/30 border-none focus-visible:ring-1"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
             />
@@ -224,11 +233,11 @@ export function KanbanBoard({ userRole, username }: KanbanBoardProps) {
           <div className="flex items-center gap-2">
             <UserIcon className="h-4 w-4 text-muted-foreground" />
             <Select value={assigneeFilter} onValueChange={setAssigneeFilter}>
-              <SelectTrigger className="w-[180px] h-9 bg-muted/30">
+              <SelectTrigger className="w-[180px] h-9 bg-muted/30 border-none">
                 <SelectValue placeholder="All Assignees" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">All Assignees</SelectItem>
+                <SelectItem value="all">All Members</SelectItem>
                 {TEAM_MEMBERS.map(m => (
                   <SelectItem key={m} value={m}>{m}</SelectItem>
                 ))}
@@ -236,7 +245,7 @@ export function KanbanBoard({ userRole, username }: KanbanBoardProps) {
             </Select>
           </div>
 
-          <div className="flex bg-muted/30 p-1 rounded-md ml-auto">
+          <div className="flex bg-muted/30 p-1 rounded-md ml-auto border">
             <Button 
               variant="ghost" 
               size="sm" 
@@ -264,7 +273,7 @@ export function KanbanBoard({ userRole, username }: KanbanBoardProps) {
       </header>
 
       {/* Main Content Area */}
-      <main className="flex-1 overflow-auto p-6">
+      <main className="flex-1 overflow-auto p-6 scrollbar-thin scrollbar-thumb-muted-foreground/20">
         {viewMode === 'board' ? (
           <div className="flex gap-6 h-full min-w-max">
             {COLUMNS.map((status) => (
