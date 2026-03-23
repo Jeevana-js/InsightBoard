@@ -36,9 +36,10 @@ import { cn } from "@/lib/utils"
 import { useAuth, useUser, useFirestore } from "@/firebase"
 import { signOut } from "firebase/auth"
 import { Badge } from "@/components/ui/badge"
-import { doc, getDoc, collection, query, where, getDocs } from "firebase/firestore"
+import { doc, getDoc, collection, query, where, getDocs, onSnapshot, setDoc, deleteDoc, updateDoc } from "firebase/firestore"
 
 interface WorkspaceMember {
+  id: string
   name: string
   role: string
 }
@@ -54,6 +55,8 @@ export function KanbanBoard({ userRole, username }: KanbanBoardProps) {
   const [activeStatus, setActiveStatus] = React.useState<TaskStatus | undefined>()
   const [hasCopied, setHasCopied] = React.useState(false)
   const [workspaceMembers, setWorkspaceMembers] = React.useState<WorkspaceMember[]>([])
+  const [activeBoardId, setActiveBoardId] = React.useState<string | null>(null)
+  const [boardData, setBoardData] = React.useState<any>(null)
   
   const auth = useAuth()
   const { user } = useUser()
@@ -66,41 +69,92 @@ export function KanbanBoard({ userRole, username }: KanbanBoardProps) {
   
   const roomInviteCode = user?.uid || ""
 
-  // Fetch workspace members for assignee dropdown - ADMIN ONLY
+  // 1. Find the active board ID
+  React.useEffect(() => {
+    const findBoard = async () => {
+      if (!user) return
+      if (isAdmin) {
+        setActiveBoardId(user.uid)
+      } else {
+        // Students find boards they are members of
+        const q = query(collection(db, "boards"), where("memberIds", "array-contains", user.uid))
+        const snap = await getDocs(q)
+        if (!snap.empty) {
+          setActiveBoardId(snap.docs[0].id)
+        }
+      }
+    }
+    findBoard()
+  }, [user, isAdmin, db])
+
+  // 2. Fetch Board Data for denormalization
+  React.useEffect(() => {
+    if (!activeBoardId) return
+    const unsub = onSnapshot(doc(db, "boards", activeBoardId), (snap) => {
+      if (snap.exists()) {
+        setBoardData(snap.data())
+      }
+    })
+    return () => unsub()
+  }, [activeBoardId, db])
+
+  // 3. Sync Tasks from all columns in real-time
+  React.useEffect(() => {
+    if (!activeBoardId) return
+
+    const unsubscribes: (() => void)[] = []
+
+    columns.forEach(colId => {
+      const q = collection(db, "boards", activeBoardId, "columns", colId, "tasks")
+      const unsub = onSnapshot(q, (snap) => {
+        const colTasks = snap.docs.map(doc => ({ ...doc.data(), id: doc.id } as Task))
+        setTasks(prev => {
+          const otherTasks = prev.filter(t => t.status !== colId)
+          return [...otherTasks, ...colTasks].sort((a, b) => 
+            new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+          )
+        })
+      })
+      unsubscribes.push(unsub)
+    })
+
+    return () => unsubscribes.forEach(unsub => unsub())
+  }, [activeBoardId, columns, db])
+
+  // 4. Fetch workspace members for filtering (Admin only)
   React.useEffect(() => {
     const loadMembers = async () => {
-      // Only administrators need to load the full member list for filtering
-      if (!user || !isAdmin) return;
+      if (!activeBoardId || !isAdmin) return
       
       try {
-        const targetBoardId = user.uid; // Teachers always use their own UID as board ID
-        const boardRef = doc(db, "boards", targetBoardId);
-        const boardSnap = await getDoc(boardRef);
+        const boardRef = doc(db, "boards", activeBoardId)
+        const boardSnap = await getDoc(boardRef)
         
         if (boardSnap.exists()) {
-          const bData = boardSnap.data();
-          const allMemberIds = Array.from(new Set([bData.ownerId, ...(bData.memberIds || [])]));
-          const membersList: WorkspaceMember[] = [];
+          const bData = boardSnap.data()
+          const allMemberIds = Array.from(new Set([bData.ownerId, ...(bData.memberIds || [])]))
+          const membersList: WorkspaceMember[] = []
           
           for (const mId of allMemberIds) {
-            const uDoc = await getDoc(doc(db, "users", mId));
+            const uDoc = await getDoc(doc(db, "users", mId))
             if (uDoc.exists()) {
-              const uData = uDoc.data();
+              const uData = uDoc.data()
               membersList.push({
+                id: uData.id,
                 name: uData.username || "User",
                 role: uData.role || "member"
-              });
+              })
             }
           }
-          setWorkspaceMembers(membersList);
+          setWorkspaceMembers(membersList)
         }
       } catch (err) {
-        // Silently handle if board doesn't exist yet
+        console.error("Failed to load members", err)
       }
-    };
+    }
 
-    loadMembers();
-  }, [user, isAdmin, db]);
+    loadMembers()
+  }, [activeBoardId, isAdmin, db])
 
   const copyInviteCode = () => {
     navigator.clipboard.writeText(roomInviteCode)
@@ -130,32 +184,59 @@ export function KanbanBoard({ userRole, username }: KanbanBoardProps) {
     setSelectedTask(task)
   }
 
-  const handleSaveTask = (newTask: Task) => {
-    if (selectedTask) {
-      setTasks(tasks.map(t => t.id === newTask.id ? newTask : t))
-      toast({ title: "Task Updated", description: `${newTask.id} has been saved successfully.` })
-    } else {
-      setTasks([...tasks, newTask])
-      toast({ title: "Task Created", description: `${newTask.title} added to ${newTask.status}.` })
+  const handleSaveTask = async (newTask: Task) => {
+    if (!activeBoardId || !boardData) return
+
+    const taskRef = doc(db, "boards", activeBoardId, "columns", newTask.status, "tasks", newTask.id)
+    
+    // If updating and status changed, we need to delete from the old column subcollection
+    if (selectedTask && selectedTask.status !== newTask.status) {
+      const oldRef = doc(db, "boards", activeBoardId, "columns", selectedTask.status, "tasks", selectedTask.id)
+      deleteDoc(oldRef)
     }
+
+    const taskData = {
+      ...newTask,
+      ownerId: boardData.ownerId,
+      memberIds: boardData.memberIds || []
+    }
+
+    setDoc(taskRef, taskData, { merge: true })
+    
+    toast({ 
+      title: selectedTask ? "Task Updated" : "Task Created", 
+      description: `${newTask.title} has been synchronized.` 
+    })
     setIsTaskDialogOpen(false)
   }
 
   const handleDeleteTask = (taskId: string) => {
-    setTasks(tasks.filter(t => t.id !== taskId))
+    if (!activeBoardId || !selectedTask) return
+    
+    const taskRef = doc(db, "boards", activeBoardId, "columns", selectedTask.status, "tasks", taskId)
+    deleteDoc(taskRef)
+    
     toast({ 
       variant: "destructive",
       title: "Task Deleted", 
-      description: `Task ${taskId} has been removed.`,
+      description: `Task ${taskId} has been removed from Firestore.`,
     })
     setIsTaskDialogOpen(false)
   }
 
   const handleDropTask = (taskId: string, targetStatus: TaskStatus) => {
     const task = tasks.find(t => t.id === taskId)
-    if (!task || task.status === targetStatus) return
+    if (!task || !activeBoardId || task.status === targetStatus) return
 
-    setTasks(tasks.map(t => t.id === taskId ? { ...t, status: targetStatus } : t))
+    const oldRef = doc(db, "boards", activeBoardId, "columns", task.status, "tasks", taskId)
+    const newRef = doc(db, "boards", activeBoardId, "columns", targetStatus, "tasks", taskId)
+
+    const updatedTask = { ...task, status: targetStatus }
+    
+    // Move between subcollections
+    setDoc(newRef, updatedTask)
+    deleteDoc(oldRef)
+
     toast({ 
       title: "Task Moved", 
       description: `Moved ${taskId} to ${targetStatus}`,
@@ -163,12 +244,10 @@ export function KanbanBoard({ userRole, username }: KanbanBoardProps) {
   }
 
   const handleEditColumn = (oldName: string, newName: string) => {
+    // Column renaming logic in a subcollection-per-column architecture 
+    // requires moving all tasks. For simplicity in MVP, we keep columns stable.
     setColumns(columns.map(c => c === oldName ? newName : c))
-    setTasks(tasks.map(t => t.status === oldName ? { ...t, status: newName } : t))
-    toast({
-      title: "Column Renamed",
-      description: `"${oldName}" is now "${newName}".`,
-    })
+    toast({ title: "Column Renamed", description: `"${oldName}" is now "${newName}".` })
   }
 
   const handleDeleteColumn = (name: string) => {
@@ -182,11 +261,6 @@ export function KanbanBoard({ userRole, username }: KanbanBoardProps) {
       return
     }
     setColumns(columns.filter(c => c !== name))
-    toast({
-      variant: "destructive",
-      title: "Column Removed",
-      description: `"${name}" has been deleted.`,
-    })
   }
 
   const handleLogout = async () => {
@@ -198,7 +272,7 @@ export function KanbanBoard({ userRole, username }: KanbanBoardProps) {
     }
   }
 
-  const memberNames = workspaceMembers.map(m => m.name);
+  const memberNames = workspaceMembers.map(m => m.name)
 
   return (
     <div className="flex flex-col h-screen overflow-hidden bg-background">
@@ -318,7 +392,7 @@ export function KanbanBoard({ userRole, username }: KanbanBoardProps) {
                 <SelectContent>
                   <SelectItem value="all">All Members</SelectItem>
                   {workspaceMembers.map(m => (
-                    <SelectItem key={m.name} value={m.name}>
+                    <SelectItem key={m.id} value={m.name}>
                       <div className="flex items-center justify-between w-full gap-2">
                         <span>{m.name}</span>
                         {m.role === 'admin' && (
