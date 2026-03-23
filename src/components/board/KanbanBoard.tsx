@@ -4,7 +4,7 @@
 import * as React from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
-import { Search, Plus, LayoutGrid, List, SlidersHorizontal, User as UserIcon, LogOut, ShieldCheck, Share2, Copy, Check, Hash, Loader2 } from "lucide-react"
+import { Search, Plus, LayoutGrid, List, SlidersHorizontal, User as UserIcon, LogOut, ShieldCheck, Share2, Copy, Check, Hash, Loader2, AlertCircle } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { 
@@ -39,6 +39,7 @@ import { Badge } from "@/components/ui/badge"
 import { doc, getDoc, collection, query, where, getDocs, onSnapshot, setDoc, deleteDoc } from "firebase/firestore"
 import { errorEmitter } from "@/firebase/error-emitter"
 import { FirestorePermissionError } from "@/firebase/errors"
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 
 interface WorkspaceMember {
   id: string
@@ -59,6 +60,7 @@ export function KanbanBoard({ userRole, username }: KanbanBoardProps) {
   const [workspaceMembers, setWorkspaceMembers] = React.useState<WorkspaceMember[]>([])
   const [activeBoardId, setActiveBoardId] = React.useState<string | null>(null)
   const [boardData, setBoardData] = React.useState<any>(null)
+  const [isAccessRevoked, setIsAccessRevoked] = React.useState(false)
   
   const auth = useAuth()
   const { user } = useUser()
@@ -96,27 +98,39 @@ export function KanbanBoard({ userRole, username }: KanbanBoardProps) {
 
   // 2. Fetch Board Data for denormalization and real-time membership tracking
   React.useEffect(() => {
-    if (!activeBoardId) return
+    if (!activeBoardId || !user) return
     const unsub = onSnapshot(doc(db, "boards", activeBoardId), (snap) => {
       if (snap.exists()) {
-        setBoardData(snap.data())
+        const data = snap.data()
+        setBoardData(data)
+        
+        // Check if current user is still authorized
+        const isOwner = data.ownerId === user.uid
+        const isMember = data.memberIds?.includes(user.uid)
+        
+        if (!isOwner && !isMember) {
+          setIsAccessRevoked(true)
+        } else {
+          setIsAccessRevoked(false)
+        }
+      } else {
+        // Board doesn't exist anymore
+        setIsAccessRevoked(true)
       }
     })
     return () => unsub()
-  }, [activeBoardId, db])
+  }, [activeBoardId, db, user])
 
   // 3. Sync Tasks from all columns in real-time with QAP-compliant filters
   React.useEffect(() => {
-    if (!activeBoardId || !user) return
+    if (!activeBoardId || !user || isAccessRevoked) return
 
     const unsubscribes: (() => void)[] = []
 
     columns.forEach(colId => {
       const baseCol = collection(db, "boards", activeBoardId, "columns", colId, "tasks")
       
-      // Query-Accurate Permissions (QAP):
-      // We must use a filter that the security rules can verify for the 'list' operation.
-      // Important: Check if we are the OWNER of the board vs a Member.
+      // Important: Check if we are the OWNER of the board vs a Member for QAP
       const isActualOwner = user.uid === activeBoardId;
       
       const q = isActualOwner 
@@ -145,11 +159,11 @@ export function KanbanBoard({ userRole, username }: KanbanBoardProps) {
     })
 
     return () => unsubscribes.forEach(unsub => unsub())
-  }, [activeBoardId, columns, db, user])
+  }, [activeBoardId, columns, db, user, isAccessRevoked])
 
   // 4. Fetch workspace members reactively whenever boardData (membership list) changes
   React.useEffect(() => {
-    if (!boardData || !db) return
+    if (!boardData || !db || isAccessRevoked) return
     
     const loadMembers = async () => {
       try {
@@ -180,7 +194,7 @@ export function KanbanBoard({ userRole, username }: KanbanBoardProps) {
     }
 
     loadMembers()
-  }, [boardData, db])
+  }, [boardData, db, isAccessRevoked])
 
   const copyInviteCode = () => {
     navigator.clipboard.writeText(roomInviteCode)
@@ -190,6 +204,52 @@ export function KanbanBoard({ userRole, username }: KanbanBoardProps) {
       description: "Students can now use this code to join your room during signup.",
     })
     setTimeout(() => setHasCopied(false), 2000)
+  }
+
+  const handleLogout = async () => {
+    try {
+      await signOut(auth)
+      router.push("/login")
+    } catch (error: any) {
+      toast({ variant: "destructive", title: "Logout Failed", description: error.message })
+    }
+  }
+
+  if (isAccessRevoked) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-muted/20 p-4">
+        <Card className="max-w-md w-full shadow-2xl border-t-4 border-t-destructive animate-in fade-in slide-in-from-bottom-4 duration-500">
+          <CardHeader className="text-center space-y-4">
+            <div className="mx-auto h-16 w-16 bg-destructive/10 rounded-full flex items-center justify-center">
+              <AlertCircle className="h-10 w-10 text-destructive" />
+            </div>
+            <div className="space-y-2">
+              <CardTitle className="text-2xl font-bold text-slate-900">Access Revoked</CardTitle>
+              <CardDescription className="text-lg font-medium text-slate-600">
+                You are no longer in this group.
+              </CardDescription>
+            </div>
+          </CardHeader>
+          <CardContent className="text-center">
+            <p className="text-sm text-muted-foreground leading-relaxed">
+              An administrator has removed your account from this workspace. You can no longer view or interact with this board.
+            </p>
+          </CardContent>
+          <CardFooter className="flex flex-col gap-3">
+            <Button onClick={handleLogout} className="w-full h-12 text-base font-semibold" variant="destructive">
+              <LogOut className="h-5 w-5 mr-2" />
+              Sign Out
+            </Button>
+            <Button asChild variant="ghost" className="w-full text-primary hover:text-primary hover:bg-primary/5">
+              <Link href="/settings">
+                <SlidersHorizontal className="h-4 w-4 mr-2" />
+                Join Another Workspace
+              </Link>
+            </Button>
+          </CardFooter>
+        </Card>
+      </div>
+    )
   }
 
   const filteredTasks = tasks.filter(task => {
@@ -320,15 +380,6 @@ export function KanbanBoard({ userRole, username }: KanbanBoardProps) {
       return
     }
     setColumns(columns.filter(c => c !== name))
-  }
-
-  const handleLogout = async () => {
-    try {
-      await signOut(auth)
-      router.push("/login")
-    } catch (error: any) {
-      toast({ variant: "destructive", title: "Logout Failed", description: error.message })
-    }
   }
 
   const memberNames = workspaceMembers.map(m => m.name)
