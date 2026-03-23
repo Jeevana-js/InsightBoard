@@ -1,3 +1,4 @@
+
 "use client"
 
 import * as React from "react"
@@ -46,7 +47,13 @@ interface WorkspaceMember {
   role: string
 }
 
-export function KanbanBoard({ userRole, username }: KanbanBoardProps) {
+interface KanbanBoardProps {
+  userRole?: string
+  username?: string | null
+  rollNumber?: string
+}
+
+export function KanbanBoard({ userRole, username, rollNumber }: KanbanBoardProps) {
   const [tasks, setTasks] = React.useState<Task[]>([])
   const [columns, setColumns] = React.useState<string[]>(INITIAL_COLUMNS)
   const [searchQuery, setSearchQuery] = React.useState("")
@@ -560,15 +567,11 @@ export function KanbanBoard({ userRole, username }: KanbanBoardProps) {
         onDelete={handleDeleteTask}
         defaultStatus={activeStatus}
         currentUsername={username || undefined}
+        userRollNumber={rollNumber}
         columnOptions={columns}
         memberOptions={memberNames}
         isAdmin={isAdmin}
       />
     </div>
   )
-}
-
-interface KanbanBoardProps {
-  userRole?: string
-  username?: string | null
 }

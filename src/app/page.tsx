@@ -1,3 +1,4 @@
+
 "use client"
 
 import * as React from "react"
@@ -41,7 +42,11 @@ export default function Home() {
 
   return (
     <main className="min-h-screen bg-background">
-      <KanbanBoard userRole={profile?.role} username={profile?.username || user.displayName} />
+      <KanbanBoard 
+        userRole={profile?.role} 
+        username={profile?.username || user.displayName} 
+        rollNumber={profile?.rollNumber}
+      />
     </main>
   )
 }

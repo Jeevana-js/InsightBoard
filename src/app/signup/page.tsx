@@ -1,9 +1,10 @@
+
 "use client"
 
 import * as React from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
-import { LayoutGrid, Mail, Lock, User, Loader2, GraduationCap, Briefcase, CheckCircle2, Hash } from "lucide-react"
+import { LayoutGrid, Mail, Lock, User, Loader2, GraduationCap, Briefcase, CheckCircle2, Hash, Fingerprint } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -21,6 +22,7 @@ export default function SignupPage() {
     email: "",
     password: "",
     confirmPassword: "",
+    rollNumber: "",
     role: "student" as "teacher" | "student",
     inviteCode: ""
   })
@@ -53,6 +55,15 @@ export default function SignupPage() {
       return
     }
 
+    if (!formData.rollNumber.trim()) {
+      toast({
+        variant: "destructive",
+        title: "Missing Roll Number",
+        description: "Please enter your roll number or ID.",
+      })
+      return
+    }
+
     setIsLoading(true)
     try {
       const userCredential = await createUserWithEmailAndPassword(auth, formData.email, formData.password)
@@ -67,6 +78,7 @@ export default function SignupPage() {
         id: user.uid,
         username: formData.username,
         email: formData.email,
+        rollNumber: formData.rollNumber.trim(),
         role: appRole,
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString()
@@ -94,8 +106,6 @@ export default function SignupPage() {
           await updateDoc(boardRef, {
             memberIds: arrayUnion(user.uid)
           })
-        } else {
-          console.warn("Invited board does not exist. Student account created but not joined.")
         }
       }
 
@@ -154,6 +164,24 @@ export default function SignupPage() {
                   required 
                 />
               </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="rollNumber">Roll Number / ID</Label>
+              <div className="relative">
+                <Fingerprint className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                <Input 
+                  id="rollNumber" 
+                  placeholder="e.g. 225001" 
+                  className="pl-10"
+                  value={formData.rollNumber}
+                  onChange={(e) => setFormData({...formData, rollNumber: e.target.value})}
+                  required 
+                />
+              </div>
+              <p className="text-[10px] text-muted-foreground italic px-1">
+                Your tasks will be numbered based on this ID.
+              </p>
             </div>
             
             <div className="space-y-2">

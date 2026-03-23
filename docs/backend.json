@@ -20,6 +20,10 @@
           "description": "The user's email address, used for communication and potentially login.",
           "format": "email"
         },
+        "rollNumber": {
+          "type": "string",
+          "description": "The user's unique roll number or employee ID used for identification."
+        },
         "role": {
           "type": "string",
           "description": "The role of the user within the application, determining their permissions (e.g., 'admin' for teachers, 'member' for students).",

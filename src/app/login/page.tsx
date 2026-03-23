@@ -4,7 +4,7 @@
 import * as React from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
-import { LayoutGrid, Mail, Lock, Loader2, User as UserIcon, CheckCircle2, GraduationCap, Briefcase, Hash } from "lucide-react"
+import { LayoutGrid, Mail, Lock, Loader2, User as UserIcon, CheckCircle2, GraduationCap, Briefcase, Hash, Fingerprint } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -26,6 +26,7 @@ export default function LoginPage() {
   const [tempGoogleUser, setTempGoogleUser] = React.useState<User | null>(null)
   const [onboardingData, setOnboardingData] = React.useState({
     username: "",
+    rollNumber: "",
     role: "student" as "teacher" | "student",
     inviteCode: ""
   })
@@ -37,10 +38,7 @@ export default function LoginPage() {
   const { toast } = useToast()
 
   React.useEffect(() => {
-    // Only auto-redirect if the user is logged in AND we aren't showing the onboarding UI
     if (currentUser && !showRoleSelection && !isUserLoading) {
-      // We still check if they have a profile in page.tsx, so it's safe to push here
-      // unless we know they need onboarding.
       const checkProfile = async () => {
         const docSnap = await getDoc(doc(db, "users", currentUser.uid))
         if (docSnap.exists()) {
@@ -75,13 +73,11 @@ export default function LoginPage() {
       const result = await signInWithPopup(auth, provider)
       const user = result.user
 
-      // Check if user exists in Firestore
       const userDoc = await getDoc(doc(db, "users", user.uid))
       
       if (userDoc.exists()) {
         router.push("/")
       } else {
-        // New user detected via Google login
         setTempGoogleUser(user)
         setOnboardingData(prev => ({
           ...prev,
@@ -104,13 +100,17 @@ export default function LoginPage() {
     e.preventDefault()
     if (!tempGoogleUser) return
 
+    if (!onboardingData.rollNumber.trim()) {
+      toast({ variant: "destructive", title: "Missing Roll Number", description: "Please enter your roll number." })
+      return
+    }
+
     setIsLoading(true)
     try {
       const user = tempGoogleUser
       const isInviteActive = onboardingData.inviteCode.trim().length > 5
       const appRole = (isInviteActive || onboardingData.role === 'student') ? 'member' : 'admin'
       
-      // Update Auth Profile if username changed
       if (onboardingData.username !== user.displayName) {
         await updateProfile(user, { displayName: onboardingData.username })
       }
@@ -120,6 +120,7 @@ export default function LoginPage() {
         id: user.uid,
         username: onboardingData.username,
         email: user.email,
+        rollNumber: onboardingData.rollNumber.trim(),
         role: appRole,
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString()
@@ -191,6 +192,21 @@ export default function LoginPage() {
                   onChange={(e) => setOnboardingData({...onboardingData, username: e.target.value})}
                   required 
                 />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="rollNumber">Roll Number / ID</Label>
+                <div className="relative">
+                  <Fingerprint className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                  <Input 
+                    id="rollNumber" 
+                    placeholder="e.g. 225001" 
+                    className="pl-10"
+                    value={onboardingData.rollNumber}
+                    onChange={(e) => setOnboardingData({...onboardingData, rollNumber: e.target.value})}
+                    required 
+                  />
+                </div>
               </div>
 
               <div className="space-y-2">

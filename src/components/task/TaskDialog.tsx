@@ -54,6 +54,7 @@ interface TaskDialogProps {
   onDelete?: (taskId: string) => void
   defaultStatus?: TaskStatus
   currentUsername?: string
+  userRollNumber?: string
   columnOptions?: string[]
   memberOptions?: string[]
   isAdmin?: boolean
@@ -67,6 +68,7 @@ export function TaskDialog({
   onDelete,
   defaultStatus, 
   currentUsername,
+  userRollNumber,
   columnOptions = INITIAL_COLUMNS,
   memberOptions = [],
   isAdmin = false
@@ -117,12 +119,11 @@ export function TaskDialog({
   }
 
   const generateNumericId = () => {
-    // Generate a numeric ID starting from 225001. 
-    // Since this is a client-side prototype, we use a random offset from the base
-    // to simulate unique IDs while maintaining the requested numeric format.
-    const base = 225001;
-    const randomOffset = Math.floor(Math.random() * 10000);
-    return (base + randomOffset).toString();
+    // Use roll number as the base, or a default if not available
+    const basePrefix = userRollNumber || "225001";
+    // Generate a 4-digit random sequence for uniqueness
+    const randomSequence = Math.floor(1000 + Math.random() * 9000);
+    return `${basePrefix}-${randomSequence}`;
   }
 
   const onSubmit = (values: z.infer<typeof taskSchema>) => {
