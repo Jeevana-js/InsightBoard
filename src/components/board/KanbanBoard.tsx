@@ -172,18 +172,6 @@ export function KanbanBoard({ userRole, username }: KanbanBoardProps) {
             </div>
           </div>
           <div className="flex items-center gap-3">
-             <Button 
-               variant="outline" 
-               size="sm" 
-               className="hidden sm:flex"
-               asChild
-             >
-              <Link href="/settings">
-                <SlidersHorizontal className="h-4 w-4 mr-2" />
-                Settings
-              </Link>
-            </Button>
-            
             <Button onClick={() => handleAddTask('New')} className="bg-primary hover:bg-primary/90">
               <Plus className="h-4 w-4 mr-2" />
               New Task
