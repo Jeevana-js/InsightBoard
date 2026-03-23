@@ -192,19 +192,19 @@ export function KanbanBoard({ userRole, username }: KanbanBoardProps) {
             {isAdmin && (
               <Popover>
                 <PopoverTrigger asChild>
-                  <Button variant="outline" className="border-accent text-accent hover:bg-accent hover:text-white transition-all">
+                  <Button variant="outline" className="border-accent text-accent hover:bg-accent hover:text-white transition-all shadow-sm">
                     <Share2 className="h-4 w-4 mr-2" />
                     Invite Students
                   </Button>
                 </PopoverTrigger>
-                <PopoverContent className="w-80 p-4 shadow-xl border-accent/20">
+                <PopoverContent className="w-80 p-5 shadow-2xl border-accent/20 bg-white/95 backdrop-blur-sm">
                   <div className="space-y-4">
-                    <div className="space-y-1">
-                      <h4 className="text-sm font-bold flex items-center gap-2">
-                        <Hash className="h-3 w-3" />
+                    <div className="space-y-1.5">
+                      <h4 className="text-sm font-bold flex items-center gap-2 text-foreground">
+                        <Hash className="h-4 w-4 text-accent" />
                         Room Invite Code
                       </h4>
-                      <p className="text-[10px] text-muted-foreground">
+                      <p className="text-[11px] text-muted-foreground leading-relaxed">
                         Students using this code are forced to join as <strong>Members</strong> only.
                       </p>
                     </div>
@@ -212,10 +212,10 @@ export function KanbanBoard({ userRole, username }: KanbanBoardProps) {
                       <Input 
                         readOnly 
                         value={roomInviteCode} 
-                        className="h-8 text-[10px] bg-muted/50 border-none font-code text-center"
+                        className="h-10 text-xs bg-muted/80 border border-accent/20 font-code text-center font-bold text-primary selection:bg-primary/20"
                       />
-                      <Button size="icon" variant="ghost" className="h-8 w-8 shrink-0" onClick={copyInviteCode}>
-                        {hasCopied ? <Check className="h-4 w-4 text-emerald-500" /> : <Copy className="h-4 w-4" />}
+                      <Button size="icon" variant="secondary" className="h-10 w-10 shrink-0 shadow-sm" onClick={copyInviteCode}>
+                        {hasCopied ? <Check className="h-5 w-5 text-emerald-500" /> : <Copy className="h-5 w-5" />}
                       </Button>
                     </div>
                   </div>
@@ -223,22 +223,22 @@ export function KanbanBoard({ userRole, username }: KanbanBoardProps) {
               </Popover>
             )}
 
-            <Button onClick={() => handleAddTask(columns[0] || 'New')} className="bg-primary hover:bg-primary/90">
+            <Button onClick={() => handleAddTask(columns[0] || 'New')} className="bg-primary hover:bg-primary/90 shadow-md">
               <Plus className="h-4 w-4 mr-2" />
               New Task
             </Button>
 
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="icon" className="rounded-full bg-muted/50 border">
-                  <UserIcon className="h-5 w-5" />
+                <Button variant="ghost" size="icon" className="rounded-full bg-muted/50 border hover:bg-muted/80 transition-colors">
+                  <UserIcon className="h-5 w-5 text-primary" />
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-56">
                 <DropdownMenuLabel>
                   <div className="flex flex-col">
                     <span className="font-bold">{username || "User"}</span>
-                    <span className="text-[10px] text-muted-foreground uppercase">{userRole}</span>
+                    <span className="text-[10px] text-muted-foreground uppercase tracking-wider">{userRole}</span>
                   </div>
                 </DropdownMenuLabel>
                 <DropdownMenuSeparator />
@@ -249,7 +249,7 @@ export function KanbanBoard({ userRole, username }: KanbanBoardProps) {
                   </Link>
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={handleLogout} className="text-destructive cursor-pointer">
+                <DropdownMenuItem onClick={handleLogout} className="text-destructive cursor-pointer font-medium">
                   <LogOut className="h-4 w-4 mr-2" />
                   Sign Out
                 </DropdownMenuItem>
@@ -263,7 +263,7 @@ export function KanbanBoard({ userRole, username }: KanbanBoardProps) {
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input 
               placeholder="Search tasks or IDs..." 
-              className="pl-10 h-9 bg-muted/30 border-none focus-visible:ring-1"
+              className="pl-10 h-9 bg-muted/30 border-none focus-visible:ring-1 transition-all"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
             />
@@ -286,13 +286,13 @@ export function KanbanBoard({ userRole, username }: KanbanBoardProps) {
             </div>
           )}
 
-          <div className="flex bg-muted/30 p-1 rounded-md ml-auto border">
+          <div className="flex bg-muted/30 p-1 rounded-md ml-auto border shadow-sm">
             <Button 
               variant="ghost" 
               size="sm" 
               className={cn(
                 "h-7 px-2 rounded-sm transition-all",
-                viewMode === 'board' ? "bg-white shadow-sm text-primary" : "text-muted-foreground"
+                viewMode === 'board' ? "bg-white shadow-sm text-primary font-bold" : "text-muted-foreground"
               )}
               onClick={() => setViewMode('board')}
             >
@@ -303,7 +303,7 @@ export function KanbanBoard({ userRole, username }: KanbanBoardProps) {
               size="sm" 
               className={cn(
                 "h-7 px-2 rounded-sm transition-all",
-                viewMode === 'list' ? "bg-white shadow-sm text-primary" : "text-muted-foreground"
+                viewMode === 'list' ? "bg-white shadow-sm text-primary font-bold" : "text-muted-foreground"
               )}
               onClick={() => setViewMode('list')}
             >
