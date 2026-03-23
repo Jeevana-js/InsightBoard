@@ -2,7 +2,8 @@
 
 import * as React from "react"
 import Link from "next/link"
-import { Search, Plus, LayoutGrid, List, SlidersHorizontal, User } from "lucide-react"
+import { useRouter } from "next/navigation"
+import { Search, Plus, LayoutGrid, List, SlidersHorizontal, User as UserIcon, LogOut } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { 
@@ -12,12 +13,23 @@ import {
   SelectTrigger, 
   SelectValue 
 } from "@/components/ui/select"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
 import { KanbanColumn } from "./KanbanColumn"
 import { TaskListView } from "./TaskListView"
 import { TaskDialog } from "@/components/task/TaskDialog"
 import { Task, TaskStatus, COLUMNS, TEAM_MEMBERS } from "@/types/task"
 import { useToast } from "@/hooks/use-toast"
 import { cn } from "@/lib/utils"
+import { useAuth } from "@/firebase"
+import { signOut } from "firebase/auth"
+import { Badge } from "@/components/ui/badge"
 
 const INITIAL_TASKS: Task[] = [
   {
@@ -57,7 +69,12 @@ const INITIAL_TASKS: Task[] = [
 
 type ViewMode = 'board' | 'list';
 
-export function KanbanBoard() {
+interface KanbanBoardProps {
+  userRole?: string
+  username?: string | null
+}
+
+export function KanbanBoard({ userRole, username }: KanbanBoardProps) {
   const [tasks, setTasks] = React.useState<Task[]>([])
   const [boardName] = React.useState("SprintSync Board")
   const [searchQuery, setSearchQuery] = React.useState("")
@@ -66,11 +83,16 @@ export function KanbanBoard() {
   const [isTaskDialogOpen, setIsTaskDialogOpen] = React.useState(false)
   const [selectedTask, setSelectedTask] = React.useState<Task | undefined>()
   const [activeStatus, setActiveStatus] = React.useState<TaskStatus | undefined>()
+  
+  const auth = useAuth()
+  const router = useRouter()
   const { toast } = useToast()
 
   React.useEffect(() => {
     setTasks(INITIAL_TASKS)
   }, [])
+
+  const isAdmin = userRole === 'admin'
 
   const filteredTasks = tasks.filter(task => {
     const matchesSearch = task.title.toLowerCase().includes(searchQuery.toLowerCase()) || 
@@ -112,16 +134,33 @@ export function KanbanBoard() {
     })
   }
 
+  const handleLogout = async () => {
+    try {
+      await signOut(auth)
+      router.push("/login")
+    } catch (error: any) {
+      toast({ variant: "destructive", title: "Logout Failed", description: error.message })
+    }
+  }
+
   return (
     <div className="flex flex-col h-screen overflow-hidden bg-background">
       {/* Top Header/Toolbar */}
       <header className="border-b bg-white px-6 py-4 flex flex-col gap-4">
         <div className="flex justify-between items-center">
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-4">
             <div className="h-8 w-8 bg-primary rounded-lg flex items-center justify-center">
               <LayoutGrid className="h-5 w-5 text-white" />
             </div>
-            <h1 className="text-xl font-headline font-bold text-primary tracking-tight">{boardName}</h1>
+            <div>
+              <div className="flex items-center gap-2">
+                <h1 className="text-xl font-headline font-bold text-primary tracking-tight">{boardName}</h1>
+                <Badge variant={isAdmin ? "default" : "secondary"} className="text-[10px] h-4">
+                  {isAdmin ? "Admin Board" : "Member View"}
+                </Badge>
+              </div>
+              {isAdmin && <p className="text-[10px] text-muted-foreground font-medium">Viewing all member activities</p>}
+            </div>
           </div>
           <div className="flex items-center gap-3">
              <Button 
@@ -135,10 +174,39 @@ export function KanbanBoard() {
                 Settings
               </Link>
             </Button>
+            
             <Button onClick={() => handleAddTask('New')} className="bg-accent hover:bg-accent/90">
               <Plus className="h-4 w-4 mr-2" />
               New Item
             </Button>
+
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="icon" className="rounded-full bg-muted/50">
+                  <UserIcon className="h-5 w-5" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-56">
+                <DropdownMenuLabel>
+                  <div className="flex flex-col">
+                    <span className="font-bold">{username || "User"}</span>
+                    <span className="text-xs text-muted-foreground capitalize">{userRole}</span>
+                  </div>
+                </DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem asChild>
+                  <Link href="/settings" className="cursor-pointer">
+                    <SlidersHorizontal className="h-4 w-4 mr-2" />
+                    Board Settings
+                  </Link>
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={handleLogout} className="text-destructive cursor-pointer">
+                  <LogOut className="h-4 w-4 mr-2" />
+                  Sign Out
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
         </div>
 
@@ -154,7 +222,7 @@ export function KanbanBoard() {
           </div>
           
           <div className="flex items-center gap-2">
-            <User className="h-4 w-4 text-muted-foreground" />
+            <UserIcon className="h-4 w-4 text-muted-foreground" />
             <Select value={assigneeFilter} onValueChange={setAssigneeFilter}>
               <SelectTrigger className="w-[180px] h-9 bg-muted/30">
                 <SelectValue placeholder="All Assignees" />
