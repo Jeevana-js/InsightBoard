@@ -121,23 +121,8 @@ export function TaskDialog({
   }
 
   const generateNumericId = () => {
-    const basePrefix = userRollNumber || "225001";
-    // Filter existing tasks to find the highest sequence number for this roll number
-    const relevantTasks = tasks.filter(t => t.id.startsWith(basePrefix));
-    let maxSuffix = 0;
-    
-    relevantTasks.forEach(t => {
-      const parts = t.id.split('-');
-      if (parts.length > 1) {
-        const suffix = parseInt(parts[1], 10);
-        if (!isNaN(suffix) && suffix > maxSuffix) {
-          maxSuffix = suffix;
-        }
-      }
-    });
-
-    const nextSuffix = (maxSuffix + 1).toString().padStart(2, '0');
-    return `${basePrefix}-${nextSuffix}`;
+    // Return exactly the roll number as requested, or a fallback if not available
+    return userRollNumber || "225001";
   }
 
   const onSubmit = (values: z.infer<typeof taskSchema>) => {
