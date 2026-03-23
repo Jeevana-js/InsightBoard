@@ -41,7 +41,8 @@ service cloud.firestore {
       allow get: if isSignedIn();
       allow list: if isAdmin();
       allow create: if isOwner(userId);
-      allow update: if isOwner(userId);
+      // Allow the owner to update their profile, or an admin to manage roles
+      allow update: if isOwner(userId) || isAdmin();
       allow delete: if isOwner(userId);
     }
 
