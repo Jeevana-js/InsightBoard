@@ -156,7 +156,7 @@ export default function SettingsPage() {
                     <Label htmlFor="username">Username</Label>
                     <Input 
                       id="username" 
-                      value={profile?.username || ""} 
+                      value={isProfileLoading ? "Loading..." : (profile?.username || user?.displayName || "")} 
                       readOnly
                       className="bg-muted/30 border-none font-medium"
                     />
