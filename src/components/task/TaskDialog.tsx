@@ -120,13 +120,13 @@ export function TaskDialog({
     }
   }
 
-  const generateNumericId = () => {
+  const generateRollId = () => {
     return userRollNumber || "225001";
   }
 
   const onSubmit = (values: z.infer<typeof taskSchema>) => {
     const newTask: Task = {
-      id: task?.id || generateNumericId(),
+      id: task?.id || generateRollId(),
       title: values.title,
       description: values.description || "",
       status: values.status,
@@ -237,14 +237,10 @@ export function TaskDialog({
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent>
-                          {isAdmin ? (
-                            memberOptions.length > 0 ? (
-                              memberOptions.map((name) => (
-                                  <SelectItem key={name} value={name}>{name}</SelectItem>
-                              ))
-                            ) : (
-                                <SelectItem value={currentUsername || "User"}>{currentUsername || "User"}</SelectItem>
-                            )
+                          {memberOptions && memberOptions.length > 0 ? (
+                            memberOptions.map((name) => (
+                                <SelectItem key={name} value={name}>{name}</SelectItem>
+                            ))
                           ) : (
                             <SelectItem value={currentUsername || "User"}>{currentUsername || "User"}</SelectItem>
                           )}
@@ -252,7 +248,7 @@ export function TaskDialog({
                       </Select>
                       {!isAdmin && (
                         <p className="text-[10px] text-muted-foreground italic px-1">
-                          As a student, you can only assign tasks to yourself.
+                          Students can see the workspace team but cannot reassign tasks.
                         </p>
                       )}
                       <FormMessage />
