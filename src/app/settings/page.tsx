@@ -1,4 +1,3 @@
-
 "use client"
 
 import * as React from "react"
@@ -30,6 +29,8 @@ import { useToast } from "@/hooks/use-toast"
 import { Member } from "@/types/task"
 import { useUser, useFirestore, useDoc, useMemoFirebase } from "@/firebase"
 import { doc, updateDoc, arrayUnion, getDoc, collection, query, where, getDocs, arrayRemove } from "firebase/firestore"
+import { errorEmitter } from "@/firebase/error-emitter"
+import { FirestorePermissionError } from "@/firebase/errors"
 
 export default function SettingsPage() {
   const [members, setMembers] = React.useState<Member[]>([])
@@ -57,19 +58,19 @@ export default function SettingsPage() {
     const findActiveBoard = async () => {
       if (!user) return
       
-      // 1. Check if user owns a board
-      const ownBoardRef = doc(db, "boards", user.uid)
-      const ownBoardSnap = await getDoc(ownBoardRef)
-      if (ownBoardSnap.exists()) {
-        setActiveBoardId(user.uid)
-        return
-      }
-
-      // 2. Check if user is a member of a board
+      // 1. Check if user is a member of a board
       const q = query(collection(db, "boards"), where("memberIds", "array-contains", user.uid))
       const memberSnap = await getDocs(q)
       if (!memberSnap.empty) {
         setActiveBoardId(memberSnap.docs[0].id)
+        return
+      }
+
+      // 2. Check if user owns a board (Teachers)
+      const ownBoardRef = doc(db, "boards", user.uid)
+      const ownBoardSnap = await getDoc(ownBoardRef)
+      if (ownBoardSnap.exists()) {
+        setActiveBoardId(user.uid)
       }
     }
     findActiveBoard()
@@ -130,11 +131,7 @@ export default function SettingsPage() {
   const handleJoinRoom = async () => {
     const code = joinCode.trim()
     if (!code) {
-      toast({
-        variant: "destructive",
-        title: "Invalid Code",
-        description: "Please enter a valid room invitation code.",
-      })
+      toast({ variant: "destructive", title: "Invalid Code", description: "Please enter a valid room invitation code." })
       return
     }
 
@@ -153,16 +150,23 @@ export default function SettingsPage() {
         return
       }
 
-      await updateDoc(boardRef, {
+      updateDoc(boardRef, {
         memberIds: arrayUnion(user?.uid)
-      })
-      
-      toast({
-        title: "Workspace Joined",
-        description: "You have successfully joined the teacher's board.",
-      })
-      setJoinCode("")
-      window.location.reload(); 
+      }).then(() => {
+        toast({
+          title: "Workspace Joined",
+          description: "You have successfully joined the teacher's board.",
+        })
+        setJoinCode("")
+        window.location.reload(); 
+      }).catch(async (err) => {
+        errorEmitter.emit('permission-error', new FirestorePermissionError({
+          path: boardRef.path,
+          operation: 'update',
+          requestResourceData: { memberIds: [user?.uid] }
+        }));
+      });
+
     } catch (error: any) {
       toast({
         variant: "destructive",
@@ -174,34 +178,34 @@ export default function SettingsPage() {
     }
   }
 
-  const handleUpdateRole = async (memberId: string, newRole: 'Admin' | 'Member') => {
+  const handleUpdateRole = (memberId: string, newRole: 'Admin' | 'Member') => {
     if (!isAdmin) return;
     
-    try {
-      // 1. Persist the role change to the user's document
-      const userRef = doc(db, "users", memberId);
-      await updateDoc(userRef, {
-        role: newRole.toLowerCase(),
-        updatedAt: new Date().toISOString()
-      });
+    const userRef = doc(db, "users", memberId);
+    const updateData = {
+      role: newRole.toLowerCase(),
+      updatedAt: new Date().toISOString()
+    };
 
-      // 2. Update local state
-      setMembers(members.map(m => m.id === memberId ? { ...m, role: newRole } : m))
-      
-      toast({
-        title: "Role Updated",
-        description: `${newRole} permissions have been synchronized across the workspace.`,
+    updateDoc(userRef, updateData)
+      .then(() => {
+        setMembers(members.map(m => m.id === memberId ? { ...m, role: newRole } : m))
+        toast({
+          title: "Role Updated",
+          description: `${newRole} permissions have been synchronized across the workspace.`,
+        })
       })
-    } catch (error: any) {
-      toast({
-        variant: "destructive",
-        title: "Update Failed",
-        description: error.message,
-      })
-    }
+      .catch(async (error: any) => {
+        const permissionError = new FirestorePermissionError({
+          path: userRef.path,
+          operation: 'update',
+          requestResourceData: updateData
+        });
+        errorEmitter.emit('permission-error', permissionError);
+      });
   }
 
-  const handleDeleteMember = async (memberId: string) => {
+  const handleDeleteMember = (memberId: string) => {
     if (!isAdmin || !activeBoardId) return;
     
     if (memberId === user?.uid) {
@@ -213,29 +217,25 @@ export default function SettingsPage() {
       return
     }
 
-    try {
-      // 1. Remove from the board's member list in Firestore
-      const boardRef = doc(db, "boards", activeBoardId);
-      await updateDoc(boardRef, {
-        memberIds: arrayRemove(memberId),
-        updatedAt: new Date().toISOString()
-      });
-
-      // 2. Update local state
+    const boardRef = doc(db, "boards", activeBoardId);
+    updateDoc(boardRef, {
+      memberIds: arrayRemove(memberId),
+      updatedAt: new Date().toISOString()
+    })
+    .then(() => {
       setMembers(members.filter(m => m.id !== memberId))
-      
       toast({
         variant: "destructive",
         title: "Member Removed",
         description: "The user no longer has access to this workspace.",
       })
-    } catch (error: any) {
-      toast({
-        variant: "destructive",
-        title: "Removal Failed",
-        description: error.message,
-      })
-    }
+    })
+    .catch(async (error: any) => {
+      errorEmitter.emit('permission-error', new FirestorePermissionError({
+        path: boardRef.path,
+        operation: 'update'
+      }));
+    });
   }
 
   return (

@@ -22,8 +22,13 @@ service cloud.firestore {
       return isSignedIn() && request.auth.uid == userId;
     }
 
+    /**
+     * Checks if the requester has the 'admin' role.
+     * Performs a look-up to the user's profile document.
+     */
     function isAdmin() {
-      return isSignedIn() && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+      return isSignedIn() && 
+             get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
     }
 
     /** 
@@ -31,18 +36,29 @@ service cloud.firestore {
      * Works for Boards, Columns, and Tasks due to denormalization.
      */
     function isBoardCollaborator(data) {
-      return isSignedIn() && (request.auth.uid == data.ownerId || request.auth.uid in data.memberIds);
+      return isSignedIn() && (
+        request.auth.uid == data.ownerId || 
+        (data.memberIds != null && request.auth.uid in data.memberIds)
+      );
     }
 
     // --- Collection Rules ---
 
     match /users/{userId} {
-      // Allow any signed-in user to 'get' a profile so collaborators can see names/roles
+      // Any signed-in user can 'get' a profile to see collaborator info
       allow get: if isSignedIn();
+      
+      // Only admins can list all users (e.g., for user management)
       allow list: if isAdmin();
+      
+      // Users can create their own profile
       allow create: if isOwner(userId);
-      // Allow the owner to update their profile, or an admin to manage roles
+      
+      // Owners can update their own profile. 
+      // Admins can update any profile (e.g., to promote a member to admin).
       allow update: if isOwner(userId) || isAdmin();
+      
+      // Owners can delete their own accounts
       allow delete: if isOwner(userId);
     }
 
@@ -58,7 +74,7 @@ service cloud.firestore {
       
       // Update allowed if:
       // 1. User is already a collaborator
-      // 2. User is signing up/joining and adding ONLY themselves to the member list
+      // 2. User is joining and adding ONLY themselves to the member list
       allow update: if isSignedIn() && (
         isBoardCollaborator(resource.data) || 
         (request.resource.data.memberIds.hasAny([request.auth.uid]))
