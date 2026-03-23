@@ -37,6 +37,8 @@ import { useAuth, useUser, useFirestore } from "@/firebase"
 import { signOut } from "firebase/auth"
 import { Badge } from "@/components/ui/badge"
 import { doc, getDoc, collection, query, where, getDocs, onSnapshot, setDoc, deleteDoc, updateDoc } from "firebase/firestore"
+import { errorEmitter } from "@/firebase/error-emitter"
+import { FirestorePermissionError } from "@/firebase/errors"
 
 interface WorkspaceMember {
   id: string
@@ -98,28 +100,46 @@ export function KanbanBoard({ userRole, username }: KanbanBoardProps) {
     return () => unsub()
   }, [activeBoardId, db])
 
-  // 3. Sync Tasks from all columns in real-time
+  // 3. Sync Tasks from all columns in real-time with QAP-compliant filters
   React.useEffect(() => {
-    if (!activeBoardId) return
+    if (!activeBoardId || !user) return
 
     const unsubscribes: (() => void)[] = []
 
     columns.forEach(colId => {
-      const q = collection(db, "boards", activeBoardId, "columns", colId, "tasks")
-      const unsub = onSnapshot(q, (snap) => {
-        const colTasks = snap.docs.map(doc => ({ ...doc.data(), id: doc.id } as Task))
-        setTasks(prev => {
-          const otherTasks = prev.filter(t => t.status !== colId)
-          return [...otherTasks, ...colTasks].sort((a, b) => 
-            new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-          )
-        })
-      })
+      const baseCol = collection(db, "boards", activeBoardId, "columns", colId, "tasks")
+      
+      // Query-Accurate Permissions (QAP): 
+      // Firestore rules require queries to have filters that match the authorization logic 
+      // when rules depend on resource data fields.
+      const q = isAdmin 
+        ? query(baseCol, where("ownerId", "==", user.uid))
+        : query(baseCol, where("memberIds", "array-contains", user.uid))
+
+      const unsub = onSnapshot(q, 
+        (snap) => {
+          const colTasks = snap.docs.map(doc => ({ ...doc.data(), id: doc.id } as Task))
+          setTasks(prev => {
+            const otherTasks = prev.filter(t => t.status !== colId)
+            return [...otherTasks, ...colTasks].sort((a, b) => 
+              new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+            )
+          })
+        },
+        async (serverError) => {
+          // Handle permission error via central error architecture
+          const permissionError = new FirestorePermissionError({
+            path: `boards/${activeBoardId}/columns/${colId}/tasks`,
+            operation: 'list',
+          });
+          errorEmitter.emit('permission-error', permissionError);
+        }
+      )
       unsubscribes.push(unsub)
     })
 
     return () => unsubscribes.forEach(unsub => unsub())
-  }, [activeBoardId, columns, db])
+  }, [activeBoardId, columns, db, isAdmin, user])
 
   // 4. Fetch workspace members for filtering (Admin only)
   React.useEffect(() => {
@@ -149,7 +169,7 @@ export function KanbanBoard({ userRole, username }: KanbanBoardProps) {
           setWorkspaceMembers(membersList)
         }
       } catch (err) {
-        console.error("Failed to load members", err)
+        // Error handling for members list if needed
       }
     }
 
@@ -192,7 +212,12 @@ export function KanbanBoard({ userRole, username }: KanbanBoardProps) {
     // If updating and status changed, we need to delete from the old column subcollection
     if (selectedTask && selectedTask.status !== newTask.status) {
       const oldRef = doc(db, "boards", activeBoardId, "columns", selectedTask.status, "tasks", selectedTask.id)
-      deleteDoc(oldRef)
+      deleteDoc(oldRef).catch(async (err) => {
+        errorEmitter.emit('permission-error', new FirestorePermissionError({
+          path: oldRef.path,
+          operation: 'delete'
+        }));
+      });
     }
 
     const taskData = {
@@ -202,6 +227,13 @@ export function KanbanBoard({ userRole, username }: KanbanBoardProps) {
     }
 
     setDoc(taskRef, taskData, { merge: true })
+      .catch(async (err) => {
+        errorEmitter.emit('permission-error', new FirestorePermissionError({
+          path: taskRef.path,
+          operation: 'write',
+          requestResourceData: taskData
+        }));
+      });
     
     toast({ 
       title: selectedTask ? "Task Updated" : "Task Created", 
@@ -215,6 +247,12 @@ export function KanbanBoard({ userRole, username }: KanbanBoardProps) {
     
     const taskRef = doc(db, "boards", activeBoardId, "columns", selectedTask.status, "tasks", taskId)
     deleteDoc(taskRef)
+      .catch(async (err) => {
+        errorEmitter.emit('permission-error', new FirestorePermissionError({
+          path: taskRef.path,
+          operation: 'delete'
+        }));
+      });
     
     toast({ 
       variant: "destructive",
@@ -234,8 +272,20 @@ export function KanbanBoard({ userRole, username }: KanbanBoardProps) {
     const updatedTask = { ...task, status: targetStatus }
     
     // Move between subcollections
-    setDoc(newRef, updatedTask)
-    deleteDoc(oldRef)
+    setDoc(newRef, updatedTask).catch(async (err) => {
+      errorEmitter.emit('permission-error', new FirestorePermissionError({
+        path: newRef.path,
+        operation: 'create',
+        requestResourceData: updatedTask
+      }));
+    });
+
+    deleteDoc(oldRef).catch(async (err) => {
+      errorEmitter.emit('permission-error', new FirestorePermissionError({
+        path: oldRef.path,
+        operation: 'delete'
+      }));
+    });
 
     toast({ 
       title: "Task Moved", 
@@ -244,8 +294,6 @@ export function KanbanBoard({ userRole, username }: KanbanBoardProps) {
   }
 
   const handleEditColumn = (oldName: string, newName: string) => {
-    // Column renaming logic in a subcollection-per-column architecture 
-    // requires moving all tasks. For simplicity in MVP, we keep columns stable.
     setColumns(columns.map(c => c === oldName ? newName : c))
     toast({ title: "Column Renamed", description: `"${oldName}" is now "${newName}".` })
   }
