@@ -99,16 +99,20 @@ export default function SettingsPage() {
 
   return (
     <div className="min-h-screen bg-background flex flex-col">
-      <header className="border-b bg-white px-6 py-4 flex items-center justify-between sticky top-0 z-50">
-        <div className="flex items-center gap-4">
+      <header className="border-b bg-white px-6 py-4 grid grid-cols-3 items-center sticky top-0 z-50">
+        <div className="flex justify-start">
           <Button variant="ghost" size="sm" asChild>
             <Link href="/">
               <ChevronLeft className="h-4 w-4 mr-1" />
               Back to Board
             </Link>
           </Button>
-          <div className="h-4 w-[1px] bg-border mx-2" />
-          <h1 className="text-xl font-bold tracking-tight">Board Settings</h1>
+        </div>
+        <div className="flex justify-center">
+          <h1 className="text-xl font-bold tracking-tight whitespace-nowrap">Board Settings</h1>
+        </div>
+        <div className="flex justify-end">
+          {/* Empty div to balance the grid columns */}
         </div>
       </header>
 
