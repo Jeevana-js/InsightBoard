@@ -1,3 +1,4 @@
+
 {
   "entities": {
     "User": {
@@ -26,6 +27,12 @@
           "items": {
             "type": "string"
           }
+        },
+        "rating": {
+          "type": "number",
+          "description": "A 1-5 star rating assigned to the user (typically students) by an administrator.",
+          "minimum": 0,
+          "maximum": 5
         },
         "createdAt": {
           "type": "string",

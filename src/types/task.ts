@@ -1,3 +1,4 @@
+
 export type TaskStatus = string;
 
 export interface Task {
@@ -16,6 +17,7 @@ export interface Member {
   role: 'Admin' | 'Member';
   email: string;
   status: 'Active' | 'Inactive';
+  rating?: number;
 }
 
 export const INITIAL_COLUMNS: string[] = ['New', 'In Development', 'Ready for Review', 'Resolved', 'Closed'];

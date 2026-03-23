@@ -1,8 +1,9 @@
+
 "use client"
 
 import * as React from "react"
 import Link from "next/link"
-import { ChevronLeft, Shield, Users, Settings as SettingsIcon, Trash2, UserPlus, Copy, Check, Hash, Loader2, DoorOpen } from "lucide-react"
+import { ChevronLeft, Shield, Users, Settings as SettingsIcon, Trash2, UserPlus, Copy, Check, Hash, Loader2, DoorOpen, Star } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -31,6 +32,7 @@ import { useUser, useFirestore, useDoc, useMemoFirebase } from "@/firebase"
 import { doc, updateDoc, arrayUnion, getDoc, collection, query, where, getDocs, arrayRemove } from "firebase/firestore"
 import { errorEmitter } from "@/firebase/error-emitter"
 import { FirestorePermissionError } from "@/firebase/errors"
+import { cn } from "@/lib/utils"
 
 export default function SettingsPage() {
   const [members, setMembers] = React.useState<Member[]>([])
@@ -100,7 +102,8 @@ export default function SettingsPage() {
                 name: uData.username || "User",
                 email: uData.email || "",
                 role: uData.role === 'admin' ? 'Admin' : 'Member',
-                status: 'Active'
+                status: 'Active',
+                rating: uData.rating || 0
               });
             }
           }
@@ -205,6 +208,32 @@ export default function SettingsPage() {
       });
   }
 
+  const handleUpdateRating = (memberId: string, rating: number) => {
+    if (!isAdmin) return;
+
+    const userRef = doc(db, "users", memberId);
+    const updateData = {
+      rating,
+      updatedAt: new Date().toISOString()
+    };
+
+    updateDoc(userRef, updateData)
+      .then(() => {
+        setMembers(members.map(m => m.id === memberId ? { ...m, rating } : m))
+        toast({
+          title: "Rating Updated",
+          description: `Student rating updated to ${rating} stars.`,
+        })
+      })
+      .catch(async (error: any) => {
+        errorEmitter.emit('permission-error', new FirestorePermissionError({
+          path: userRef.path,
+          operation: 'update',
+          requestResourceData: updateData
+        }));
+      });
+  }
+
   const handleDeleteMember = (memberId: string) => {
     if (!isAdmin || !activeBoardId) return;
     
@@ -236,6 +265,24 @@ export default function SettingsPage() {
         operation: 'update'
       }));
     });
+  }
+
+  const StarRating = ({ value, onChange, readOnly = false }: { value: number, onChange?: (val: number) => void, readOnly?: boolean }) => {
+    return (
+      <div className="flex items-center gap-0.5">
+        {[1, 2, 3, 4, 5].map((star) => (
+          <Star
+            key={star}
+            className={cn(
+              "h-4 w-4 cursor-pointer transition-colors",
+              star <= value ? "fill-amber-400 text-amber-400" : "text-muted-foreground/30",
+              readOnly && "cursor-default"
+            )}
+            onClick={() => !readOnly && onChange?.(star)}
+          />
+        ))}
+      </div>
+    )
   }
 
   return (
@@ -310,17 +357,27 @@ export default function SettingsPage() {
                       className="bg-muted/30 border-none font-medium h-11 text-slate-900"
                     />
                   </div>
-                  <div className="space-y-2">
-                    <Label>Your System Role</Label>
-                    <div className="flex items-center gap-3">
-                      <Badge variant="secondary" className="h-8 px-4 text-sm capitalize bg-primary/10 text-primary border-primary/20">
-                        {profile?.role || "Member"}
-                      </Badge>
-                      <p className="text-[11px] text-muted-foreground italic">
-                        Roles are managed at the system level and represent your workspace permissions.
-                      </p>
+                  <div className="grid grid-cols-2 gap-6">
+                    <div className="space-y-2">
+                      <Label>Your System Role</Label>
+                      <div className="flex items-center gap-3">
+                        <Badge variant="secondary" className="h-8 px-4 text-sm capitalize bg-primary/10 text-primary border-primary/20">
+                          {profile?.role || "Member"}
+                        </Badge>
+                      </div>
                     </div>
+                    {profile?.role === 'member' && (
+                      <div className="space-y-2">
+                        <Label>Teacher's Rating</Label>
+                        <div className="flex items-center h-8">
+                          <StarRating value={profile?.rating || 0} readOnly />
+                        </div>
+                      </div>
+                    )}
                   </div>
+                  <p className="text-[11px] text-muted-foreground italic">
+                    Roles and ratings are managed by your teacher at the workspace level.
+                  </p>
                 </CardContent>
               </Card>
 
@@ -405,7 +462,7 @@ export default function SettingsPage() {
                             <TableRow>
                               <TableHead>User</TableHead>
                               <TableHead>Role</TableHead>
-                              <TableHead>Status</TableHead>
+                              <TableHead>Rating</TableHead>
                               <TableHead className="text-right">Actions</TableHead>
                             </TableRow>
                           </TableHeader>
@@ -438,9 +495,14 @@ export default function SettingsPage() {
                                   </Select>
                                 </TableCell>
                                 <TableCell>
-                                  <Badge variant={member.status === 'Active' ? 'default' : 'secondary'} className="text-[10px]">
-                                    {member.status}
-                                  </Badge>
+                                  {member.role === 'Member' ? (
+                                    <StarRating 
+                                      value={member.rating || 0} 
+                                      onChange={(val) => handleUpdateRating(member.id, val)}
+                                    />
+                                  ) : (
+                                    <span className="text-[10px] text-muted-foreground italic">N/A</span>
+                                  )}
                                 </TableCell>
                                 <TableCell className="text-right">
                                   <Button 
