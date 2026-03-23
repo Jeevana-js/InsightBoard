@@ -1,8 +1,10 @@
+
 "use client"
 
 import * as React from "react"
-import { ChevronLeft, ChevronRight } from "lucide-react"
+import { ChevronDown, ChevronUp } from "lucide-react"
 import { DayPicker } from "react-day-picker"
+import { format } from "date-fns"
 
 import { cn } from "@/lib/utils"
 import { buttonVariants } from "@/components/ui/button"
@@ -15,54 +17,66 @@ function Calendar({
   showOutsideDays = true,
   ...props
 }: CalendarProps) {
+  // Extract selected date for the custom header if in single mode
+  const selectedDate = props.mode === "single" && props.selected instanceof Date 
+    ? props.selected 
+    : null;
+
   return (
-    <DayPicker
-      showOutsideDays={showOutsideDays}
-      className={cn("p-3", className)}
-      classNames={{
-        months: "flex flex-col sm:flex-row space-y-4 sm:space-x-4 sm:space-y-0",
-        month: "space-y-4",
-        caption: "flex justify-center pt-1 relative items-center px-8",
-        caption_label: "text-sm font-medium",
-        nav: "space-x-1 flex items-center",
-        nav_button: cn(
-          buttonVariants({ variant: "outline" }),
-          "h-7 w-7 bg-transparent p-0 opacity-50 hover:opacity-100"
-        ),
-        nav_button_previous: "absolute left-1",
-        nav_button_next: "absolute right-1",
-        table: "w-full border-collapse space-y-1",
-        head_row: "flex w-full justify-between",
-        head_cell:
-          "text-muted-foreground rounded-md w-9 font-normal text-[0.8rem] flex justify-center",
-        row: "flex w-full mt-2 justify-between",
-        cell: "h-9 w-9 text-center text-sm p-0 relative [&:has([aria-selected].day-range-end)]:rounded-r-md [&:has([aria-selected].day-outside)]:bg-accent/50 [&:has([aria-selected])]:bg-accent first:[&:has([aria-selected])]:rounded-l-md last:[&:has([aria-selected])]:rounded-r-md focus-within:relative focus-within:z-20",
-        day: cn(
-          buttonVariants({ variant: "ghost" }),
-          "h-9 w-9 p-0 font-normal aria-selected:opacity-100 w-full"
-        ),
-        day_range_end: "day-range-end",
-        day_selected:
-          "bg-primary text-primary-foreground hover:bg-primary hover:text-primary-foreground focus:bg-primary focus:text-primary-foreground",
-        day_today: "bg-accent text-accent-foreground",
-        day_outside:
-          "day-outside text-muted-foreground aria-selected:bg-accent/50 aria-selected:text-muted-foreground",
-        day_disabled: "text-muted-foreground opacity-50",
-        day_range_middle:
-          "aria-selected:bg-accent aria-selected:text-accent-foreground",
-        day_hidden: "invisible",
-        ...classNames,
-      }}
-      components={{
-        IconLeft: ({ className, ...props }) => (
-          <ChevronLeft className={cn("h-4 w-4", className)} {...props} />
-        ),
-        IconRight: ({ className, ...props }) => (
-          <ChevronRight className={cn("h-4 w-4", className)} {...props} />
-        ),
-      }}
-      {...props}
-    />
+    <div className={cn("bg-[#1a1a1a] text-white rounded-2xl p-4 shadow-2xl border border-white/5 w-fit", className)}>
+      {selectedDate && (
+        <div className="flex items-center justify-between mb-8 px-2">
+          <span className="text-xl font-medium tracking-tight">
+            {format(selectedDate, "EEEE, d MMMM")}
+          </span>
+          <div className="h-9 w-9 bg-[#2a2a2a] hover:bg-[#333] rounded-xl flex items-center justify-center cursor-pointer transition-colors shadow-inner border border-white/5">
+            <ChevronDown className="h-4 w-4 text-gray-400" />
+          </div>
+        </div>
+      )}
+
+      <DayPicker
+        showOutsideDays={showOutsideDays}
+        weekStartsOn={6} // Saturday as seen in the reference image
+        formatters={{
+          formatWeekdayName: (date) => format(date, "EEEEEE"), // Gives 'Sa', 'Su', 'Mo', etc.
+        }}
+        className="p-0"
+        classNames={{
+          months: "flex flex-col",
+          month: "space-y-6",
+          caption: "flex items-center px-2 mb-2",
+          caption_label: "text-lg font-bold flex-1 text-white/90",
+          nav: "flex items-center gap-1",
+          nav_button: cn(
+            buttonVariants({ variant: "ghost" }),
+            "h-8 w-8 bg-transparent p-0 opacity-70 hover:opacity-100 hover:bg-white/5 text-white border-0"
+          ),
+          nav_button_previous: "",
+          nav_button_next: "",
+          table: "w-full border-collapse",
+          head_row: "flex w-full mb-4 justify-between gap-1",
+          head_cell: "text-gray-500 w-10 font-bold text-[13px] flex justify-center uppercase tracking-wider",
+          row: "flex w-full justify-between mb-1 gap-1",
+          cell: "h-10 w-10 text-center text-sm p-0 relative flex justify-center items-center",
+          day: cn(
+            "h-10 w-10 p-0 font-medium text-white/80 hover:bg-white/5 rounded-full transition-all flex items-center justify-center cursor-pointer"
+          ),
+          day_selected:
+            "bg-[#4FC3F7] !text-black hover:bg-[#4FC3F7] hover:text-black focus:bg-[#4FC3F7] focus:text-black rounded-full font-bold shadow-[0_0_15px_rgba(79,195,247,0.3)]",
+          day_today: "text-[#4FC3F7] font-bold ring-1 ring-[#4FC3F7]/50 rounded-full",
+          day_outside: "text-white/20",
+          day_disabled: "text-white/10",
+          day_hidden: "invisible",
+          ...classNames,
+        }}
+        components={{
+          IconLeft: ({ ...props }) => <ChevronUp className="h-4 w-4" />,
+          IconRight: ({ ...props }) => <ChevronDown className="h-4 w-4" />,
+        }}
+        {...props}
+      />
+    </div>
   )
 }
 Calendar.displayName = "Calendar"
