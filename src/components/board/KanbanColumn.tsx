@@ -41,7 +41,7 @@ export function KanbanColumn({ status, tasks, onAddTask, onTaskClick, onDropTask
   return (
     <div 
       className={cn(
-        "flex flex-col w-full min-w-[280px] max-w-sm rounded-xl transition-colors duration-200 p-2",
+        "flex flex-col w-full min-w-[280px] max-w-sm rounded-xl transition-colors duration-200 p-2 h-fit",
         isOver ? "bg-accent/5 ring-2 ring-accent ring-inset" : "bg-muted/40"
       )}
       onDragOver={handleDragOver}
@@ -65,7 +65,7 @@ export function KanbanColumn({ status, tasks, onAddTask, onTaskClick, onDropTask
         </div>
       </div>
 
-      <div className="flex flex-col gap-3 h-full overflow-y-auto min-h-[500px] column-scroll-area">
+      <div className="flex flex-col gap-3 min-h-[200px] mb-2">
         {tasks.map((task) => (
           <TaskCard 
             key={task.id} 
