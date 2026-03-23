@@ -3,8 +3,8 @@
 
 import * as React from "react"
 import Link from "next/link"
-import { useRouter, useSearchParams } from "next/navigation"
-import { LayoutGrid, Mail, Lock, User, Loader2, GraduationCap, Briefcase, CheckCircle2, Link as LinkIcon } from "lucide-react"
+import { useRouter } from "next/navigation"
+import { LayoutGrid, Mail, Lock, User, Loader2, GraduationCap, Briefcase, CheckCircle2, Hash } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -17,15 +17,13 @@ import { useToast } from "@/hooks/use-toast"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 
 export default function SignupPage() {
-  const searchParams = useSearchParams()
-  const boardId = searchParams.get('boardId')
-  
   const [formData, setFormData] = React.useState({
     username: "",
     email: "",
     password: "",
     confirmPassword: "",
-    role: (boardId ? "student" : "student") as "teacher" | "student"
+    role: "student" as "teacher" | "student",
+    inviteCode: ""
   })
   const [isLoading, setIsLoading] = React.useState(false)
   const auth = useAuth()
@@ -33,12 +31,7 @@ export default function SignupPage() {
   const router = useRouter()
   const { toast } = useToast()
 
-  // If there's a boardId, we force the role to student
-  React.useEffect(() => {
-    if (boardId) {
-      setFormData(prev => ({ ...prev, role: "student" }))
-    }
-  }, [boardId])
+  const isInviteActive = formData.inviteCode.length > 5
 
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -69,8 +62,9 @@ export default function SignupPage() {
       // Update Firebase Auth profile
       await updateProfile(user, { displayName: formData.username })
 
-      // Teacher -> Admin, Student -> Member
-      const appRole = formData.role === 'teacher' ? 'admin' : 'member'
+      // Teachers who don't use a code can be admins. 
+      // Anyone using a code is FORCED to be a member.
+      const appRole = (isInviteActive || formData.role === 'student') ? 'member' : 'admin'
       
       // 1. Create User Profile
       await setDoc(doc(db, "users", user.uid), {
@@ -82,16 +76,17 @@ export default function SignupPage() {
         updatedAt: new Date().toISOString()
       })
 
-      // 2. If signing up via board invite, add user to that board
-      if (boardId) {
+      // 2. If signing up via board invite code, add user to that board
+      if (isInviteActive) {
         try {
-          const boardRef = doc(db, "boards", boardId)
+          // In this simple model, the invite code is the Teacher's UID (which acts as board ID)
+          const boardRef = doc(db, "boards", formData.inviteCode)
           await updateDoc(boardRef, {
             memberIds: arrayUnion(user.uid)
           })
         } catch (boardError) {
           console.error("Failed to add user to board", boardError)
-          // Don't fail the whole signup if board link fails, just alert the user
+          // We don't block signup if the code is invalid, but the role restriction was already applied
         }
       }
 
@@ -126,10 +121,10 @@ export default function SignupPage() {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          {boardId && (
+          {isInviteActive && (
             <Alert className="mb-6 border-accent/20 bg-accent/5">
-              <LinkIcon className="h-4 w-4 text-accent" />
-              <AlertTitle className="text-xs font-bold uppercase tracking-wider text-accent">Room Invite Active</AlertTitle>
+              <Hash className="h-4 w-4 text-accent" />
+              <AlertTitle className="text-xs font-bold uppercase tracking-wider text-accent">Room Code Active</AlertTitle>
               <AlertDescription className="text-xs">
                 You are joining a Teacher's workspace. Your role is restricted to <strong>Student Member</strong>.
               </AlertDescription>
@@ -169,42 +164,52 @@ export default function SignupPage() {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="role">What is your role?</Label>
-              <Select 
-                value={formData.role}
-                onValueChange={(val) => setFormData({...formData, role: val as any})}
-                disabled={!!boardId}
-              >
-                <SelectTrigger className="w-full">
-                  <SelectValue placeholder="Select your role" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="student">
-                    <div className="flex items-center">
-                      <GraduationCap className="h-4 w-4 mr-2 text-primary" />
-                      Student (Assigns as Member)
-                    </div>
-                  </SelectItem>
-                  {!boardId && (
+              <Label htmlFor="inviteCode">Invitation Code (Optional)</Label>
+              <div className="relative">
+                <Hash className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                <Input 
+                  id="inviteCode" 
+                  placeholder="Enter code to join a room" 
+                  className="pl-10"
+                  value={formData.inviteCode}
+                  onChange={(e) => setFormData({...formData, inviteCode: e.target.value})}
+                />
+              </div>
+              <p className="text-[10px] text-muted-foreground italic px-1">
+                Entering a code will automatically join you to that Teacher's workspace as a Member.
+              </p>
+            </div>
+
+            {!isInviteActive && (
+              <div className="space-y-2">
+                <Label htmlFor="role">What is your role?</Label>
+                <Select 
+                  value={formData.role}
+                  onValueChange={(val) => setFormData({...formData, role: val as any})}
+                >
+                  <SelectTrigger className="w-full">
+                    <SelectValue placeholder="Select your role" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="student">
+                      <div className="flex items-center">
+                        <GraduationCap className="h-4 w-4 mr-2 text-primary" />
+                        Student (Assigns as Member)
+                      </div>
+                    </SelectItem>
                     <SelectItem value="teacher">
                       <div className="flex items-center">
                         <Briefcase className="h-4 w-4 mr-2 text-primary" />
                         Teacher (Assigns as Admin)
                       </div>
                     </SelectItem>
-                  )}
-                </SelectContent>
-              </Select>
-              {boardId ? (
-                <p className="text-[10px] text-accent font-medium italic px-1">
-                  Role locked to Student for room security.
-                </p>
-              ) : (
+                  </SelectContent>
+                </Select>
                 <p className="text-[10px] text-muted-foreground italic px-1">
-                  Teachers receive administrative control over all member boards.
+                  Teachers receive administrative control over their workspace.
                 </p>
-              )}
-            </div>
+              </div>
+            )}
 
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
@@ -243,7 +248,7 @@ export default function SignupPage() {
               ) : (
                 <CheckCircle2 className="h-4 w-4 mr-2" />
               )}
-              {boardId ? "Join Room & Create Account" : "Create Account"}
+              {isInviteActive ? "Join Room & Create Account" : "Create Account"}
             </Button>
           </form>
         </CardContent>

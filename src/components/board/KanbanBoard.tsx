@@ -1,9 +1,10 @@
+
 "use client"
 
 import * as React from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
-import { Search, Plus, LayoutGrid, List, SlidersHorizontal, User as UserIcon, LogOut, ShieldCheck, Share2, Copy, Check, Link as LinkIcon } from "lucide-react"
+import { Search, Plus, LayoutGrid, List, SlidersHorizontal, User as UserIcon, LogOut, ShieldCheck, Share2, Copy, Check, Hash } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { 
@@ -67,18 +68,14 @@ export function KanbanBoard({ userRole, username }: KanbanBoardProps) {
   const isAdmin = userRole === 'admin'
   const boardTitle = isAdmin ? "All Members Board" : "Project reviewer"
   
-  const roomInviteLink = React.useMemo(() => {
-    if (typeof window === "undefined") return ""
-    const origin = window.location.origin
-    return `${origin}/signup?boardId=${user?.uid || 'main-room'}`
-  }, [user])
+  const roomInviteCode = user?.uid || ""
 
-  const copyInviteLink = () => {
-    navigator.clipboard.writeText(roomInviteLink)
+  const copyInviteCode = () => {
+    navigator.clipboard.writeText(roomInviteCode)
     setHasCopied(true)
     toast({
-      title: "Invite Link Copied",
-      description: "Students can now use this link to join your room as Members.",
+      title: "Invite Code Copied",
+      description: "Students can now use this code to join your room during signup.",
     })
     setTimeout(() => setHasCopied(false), 2000)
   }
@@ -97,8 +94,8 @@ export function KanbanBoard({ userRole, username }: KanbanBoardProps) {
   }
 
   const handleEditTask = (task: Task) => {
-    setSelectedTask(task)
     setIsTaskDialogOpen(true)
+    setSelectedTask(task)
   }
 
   const handleSaveTask = (newTask: Task) => {
@@ -179,20 +176,20 @@ export function KanbanBoard({ userRole, username }: KanbanBoardProps) {
                   <div className="space-y-4">
                     <div className="space-y-1">
                       <h4 className="text-sm font-bold flex items-center gap-2">
-                        <LinkIcon className="h-3 w-3" />
-                        Room Invite Link
+                        <Hash className="h-3 w-3" />
+                        Room Invite Code
                       </h4>
                       <p className="text-[10px] text-muted-foreground">
-                        Students using this link are forced to sign up as <strong>Members</strong> only.
+                        Students using this code are forced to join as <strong>Members</strong> only.
                       </p>
                     </div>
                     <div className="flex gap-2">
                       <Input 
                         readOnly 
-                        value={roomInviteLink} 
-                        className="h-8 text-[10px] bg-muted/50 border-none"
+                        value={roomInviteCode} 
+                        className="h-8 text-[10px] bg-muted/50 border-none font-code text-center"
                       />
-                      <Button size="icon" variant="ghost" className="h-8 w-8 shrink-0" onClick={copyInviteLink}>
+                      <Button size="icon" variant="ghost" className="h-8 w-8 shrink-0" onClick={copyInviteCode}>
                         {hasCopied ? <Check className="h-4 w-4 text-emerald-500" /> : <Copy className="h-4 w-4" />}
                       </Button>
                     </div>

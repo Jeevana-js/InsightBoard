@@ -1,8 +1,9 @@
+
 "use client"
 
 import * as React from "react"
 import Link from "next/link"
-import { ChevronLeft, Shield, Users, Settings as SettingsIcon, Trash2, UserPlus, Copy, Check, Link as LinkIcon, Loader2 } from "lucide-react"
+import { ChevronLeft, Shield, Users, Settings as SettingsIcon, Trash2, UserPlus, Copy, Check, Hash, Loader2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -60,18 +61,14 @@ export default function SettingsPage() {
     }
   }, [profile, user])
 
-  const roomInviteLink = React.useMemo(() => {
-    if (typeof window === "undefined") return ""
-    const origin = window.location.origin
-    return `${origin}/signup?boardId=${user?.uid || 'main-room'}`
-  }, [user])
+  const roomInviteCode = user?.uid || ""
 
-  const handleCopyLink = () => {
-    navigator.clipboard.writeText(roomInviteLink)
+  const handleCopyCode = () => {
+    navigator.clipboard.writeText(roomInviteCode)
     setHasCopied(true)
     toast({
-      title: "Link Copied",
-      description: "Invitation link ready to share with students.",
+      title: "Code Copied",
+      description: "Room code ready to share with students.",
     })
     setTimeout(() => setHasCopied(false), 2000)
   }
@@ -187,27 +184,27 @@ export default function SettingsPage() {
                   <div className="h-1 bg-accent w-full" />
                   <CardHeader>
                     <CardTitle className="flex items-center gap-2">
-                      <LinkIcon className="h-5 w-5 text-accent" />
-                      Room Invitation Link
+                      <Hash className="h-5 w-5 text-accent" />
+                      Room Invitation Code
                     </CardTitle>
                     <CardDescription>
-                      Share this unique link to invite students. They will be forced to join as Members.
+                      Share this unique code with students. They will use it during signup to join as Members.
                     </CardDescription>
                   </CardHeader>
                   <CardContent className="space-y-4 pb-6">
                     <div className="flex gap-2">
                       <Input 
                         readOnly 
-                        value={roomInviteLink} 
-                        className="bg-white border-dashed font-code text-xs"
+                        value={roomInviteCode} 
+                        className="bg-white border-dashed font-code text-sm tracking-wider text-center py-6 h-12"
                       />
-                      <Button variant="outline" size="icon" onClick={handleCopyLink} className="shrink-0 bg-white">
-                        {hasCopied ? <Check className="h-4 w-4 text-emerald-500" /> : <Copy className="h-4 w-4" />}
+                      <Button variant="outline" size="icon" onClick={handleCopyCode} className="shrink-0 bg-white h-12 w-12">
+                        {hasCopied ? <Check className="h-5 w-5 text-emerald-500" /> : <Copy className="h-5 w-5" />}
                       </Button>
                     </div>
                     <div className="rounded-lg bg-white/50 p-3 border border-accent/10">
                       <p className="text-[11px] text-accent font-medium leading-relaxed">
-                        <strong>Teacher Security:</strong> Users signing up via this link are restricted to the <strong>Student Member</strong> role.
+                        <strong>Teacher Security:</strong> Users signing up with this code are restricted to the <strong>Student Member</strong> role.
                       </p>
                     </div>
                   </CardContent>
