@@ -36,7 +36,7 @@ import { cn } from "@/lib/utils"
 import { useAuth, useUser, useFirestore } from "@/firebase"
 import { signOut } from "firebase/auth"
 import { Badge } from "@/components/ui/badge"
-import { doc, getDoc, collection, query, where, getDocs, onSnapshot, setDoc, deleteDoc, updateDoc } from "firebase/firestore"
+import { doc, getDoc, collection, query, where, getDocs, onSnapshot, setDoc, deleteDoc } from "firebase/firestore"
 import { errorEmitter } from "@/firebase/error-emitter"
 import { FirestorePermissionError } from "@/firebase/errors"
 
@@ -115,10 +115,14 @@ export function KanbanBoard({ userRole, username }: KanbanBoardProps) {
       const baseCol = collection(db, "boards", activeBoardId, "columns", colId, "tasks")
       
       // Query-Accurate Permissions (QAP):
-      // Even Admins should filter by ownerId or memberIds to satisfy security rules 
-      // which enforce path-based and data-based access.
-      const q = isAdmin 
-        ? query(baseCol, where("ownerId", "==", boardData?.ownerId || user.uid))
+      // We must use a filter that the security rules can verify for the 'list' operation.
+      // Important: Check if we are the OWNER of the board vs a Member.
+      // A promoted Admin (who is still a Member of the board) must still query as a Member 
+      // because they are not the 'ownerId' on the documents.
+      const isActualOwner = user.uid === activeBoardId;
+      
+      const q = isActualOwner 
+        ? query(baseCol, where("ownerId", "==", user.uid))
         : query(baseCol, where("memberIds", "array-contains", user.uid))
 
       const unsub = onSnapshot(q, 
@@ -143,12 +147,12 @@ export function KanbanBoard({ userRole, username }: KanbanBoardProps) {
     })
 
     return () => unsubscribes.forEach(unsub => unsub())
-  }, [activeBoardId, columns, db, isAdmin, user, boardData])
+  }, [activeBoardId, columns, db, user])
 
-  // 4. Fetch workspace members for filtering (Admin only)
+  // 4. Fetch workspace members for filtering (Anyone who has access can see who else is here)
   React.useEffect(() => {
     const loadMembers = async () => {
-      if (!activeBoardId || !isAdmin) return
+      if (!activeBoardId) return
       
       try {
         const boardRef = doc(db, "boards", activeBoardId)
@@ -173,12 +177,12 @@ export function KanbanBoard({ userRole, username }: KanbanBoardProps) {
           setWorkspaceMembers(membersList)
         }
       } catch (err) {
-        // Error handling for members list if needed
+        // Silently skip if members list fails to load
       }
     }
 
     loadMembers()
-  }, [activeBoardId, isAdmin, db])
+  }, [activeBoardId, db])
 
   const copyInviteCode = () => {
     navigator.clipboard.writeText(roomInviteCode)
@@ -223,6 +227,7 @@ export function KanbanBoard({ userRole, username }: KanbanBoardProps) {
       });
     }
 
+    // Always denormalize board authorization context into the task
     const taskData = {
       ...newTask,
       ownerId: boardData.ownerId,
@@ -267,12 +272,18 @@ export function KanbanBoard({ userRole, username }: KanbanBoardProps) {
 
   const handleDropTask = (taskId: string, targetStatus: TaskStatus) => {
     const task = tasks.find(t => t.id === taskId)
-    if (!task || !activeBoardId || task.status === targetStatus) return
+    if (!task || !activeBoardId || !boardData || task.status === targetStatus) return
 
     const oldRef = doc(db, "boards", activeBoardId, "columns", task.status, "tasks", taskId)
     const newRef = doc(db, "boards", activeBoardId, "columns", targetStatus, "tasks", taskId)
 
-    const updatedTask = { ...task, status: targetStatus }
+    // Maintain denormalization during move
+    const updatedTask = { 
+      ...task, 
+      status: targetStatus,
+      ownerId: boardData.ownerId,
+      memberIds: boardData.memberIds || []
+    }
     
     setDoc(newRef, updatedTask).catch(async (err) => {
       errorEmitter.emit('permission-error', new FirestorePermissionError({
