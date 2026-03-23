@@ -4,7 +4,7 @@ import * as React from "react"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import * as z from "zod"
-import { CalendarIcon, Loader2, Sparkles, Plus, Trash2 } from "lucide-react"
+import { Loader2, Sparkles, Plus, Trash2 } from "lucide-react"
 import { format } from "date-fns"
 
 import { cn } from "@/lib/utils"
@@ -34,21 +34,16 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover"
-import { Calendar } from "@/components/ui/calendar"
 import { Task, TaskStatus, TEAM_MEMBERS, COLUMNS } from "@/types/task"
 import { generateTaskDetails } from "@/ai/flows/ai-task-description-generator"
 
+// Use coerce to handle string-to-date conversion from the input field
 const taskSchema = z.object({
   title: z.string().min(3, "Title must be at least 3 characters"),
   description: z.string().optional(),
   status: z.enum(['New', 'In Development', 'Resolved', 'Closed']),
   assignee: z.string().optional(),
-  dueDate: z.date().optional(),
+  dueDate: z.string().optional().or(z.literal("")),
 })
 
 interface TaskDialogProps {
@@ -71,7 +66,7 @@ export function TaskDialog({ task, open, onOpenChange, onSave, defaultStatus }: 
       description: task?.description || "",
       status: task?.status || defaultStatus || 'New',
       assignee: task?.assignee || "",
-      dueDate: task?.dueDate ? new Date(task.dueDate) : undefined,
+      dueDate: task?.dueDate ? format(new Date(task.dueDate), "yyyy-MM-dd") : "",
     },
   })
 
@@ -82,7 +77,7 @@ export function TaskDialog({ task, open, onOpenChange, onSave, defaultStatus }: 
         description: task?.description || "",
         status: task?.status || defaultStatus || 'New',
         assignee: task?.assignee || "",
-        dueDate: task?.dueDate ? new Date(task.dueDate) : undefined,
+        dueDate: task?.dueDate ? format(new Date(task.dueDate), "yyyy-MM-dd") : "",
       })
       setSubTasks(task?.subTasks || [])
       setAcceptanceCriteria(task?.acceptanceCriteria || [])
@@ -116,7 +111,7 @@ export function TaskDialog({ task, open, onOpenChange, onSave, defaultStatus }: 
       description: values.description || "",
       status: values.status,
       assignee: values.assignee,
-      dueDate: values.dueDate?.toISOString(),
+      dueDate: values.dueDate ? new Date(values.dueDate).toISOString() : undefined,
       acceptanceCriteria,
       subTasks,
       createdAt: task?.createdAt || new Date().toISOString(),
@@ -215,33 +210,16 @@ export function TaskDialog({ task, open, onOpenChange, onSave, defaultStatus }: 
                   control={form.control}
                   name="dueDate"
                   render={({ field }) => (
-                    <FormItem className="flex flex-col">
+                    <FormItem>
                       <FormLabel>Due Date</FormLabel>
-                      <Popover>
-                        <PopoverTrigger asChild>
-                          <FormControl>
-                            <Button
-                              variant={"outline"}
-                              className={cn(
-                                "w-full pl-3 text-left font-normal",
-                                !field.value && "text-muted-foreground"
-                              )}
-                            >
-                              {field.value ? format(field.value, "PPP") : <span>Pick a date</span>}
-                              <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                            </Button>
-                          </FormControl>
-                        </PopoverTrigger>
-                        <PopoverContent className="w-auto p-0" align="start">
-                          <Calendar
-                            mode="single"
-                            selected={field.value}
-                            onSelect={field.onChange}
-                            disabled={(date) => date < new Date("1900-01-01")}
-                            initialFocus
-                          />
-                        </PopoverContent>
-                      </Popover>
+                      <FormControl>
+                        <Input 
+                          type="date" 
+                          {...field} 
+                          className="w-full"
+                        />
+                      </FormControl>
+                      <FormDescription>Select or type a date (YYYY-MM-DD)</FormDescription>
                       <FormMessage />
                     </FormItem>
                   )}
