@@ -36,7 +36,7 @@ export default function SettingsPage() {
   const [hasCopied, setHasCopied] = React.useState(false)
   const [joinCode, setJoinCode] = React.useState("")
   const [isJoining, setIsJoining] = React.useState(false)
-  const [isMembersLoading, setIsMembersLoading] = React.useState(true)
+  const [isMembersLoading, setIsMembersLoading] = React.useState(false)
   
   const { user } = useUser()
   const db = useFirestore()
@@ -51,35 +51,15 @@ export default function SettingsPage() {
 
   const isAdmin = profile?.role === 'admin'
 
-  // Fetch all board members
+  // Fetch all board members - ONLY FOR ADMINS
   React.useEffect(() => {
     const loadBoardAndMembers = async () => {
-      if (!user || !profile) return;
+      // Students should not attempt to list or fetch all members as it triggers permission errors
+      if (!user || !profile || !isAdmin) return;
       
       setIsMembersLoading(true)
       try {
-        let targetBoardId = user.uid; // Default for teachers
-        
-        if (profile.role !== 'admin') {
-          // Find board the student joined
-          const q = query(collection(db, "boards"), where("memberIds", "array-contains", user.uid));
-          const qSnap = await getDocs(q);
-          if (!qSnap.empty) {
-            targetBoardId = qSnap.docs[0].id;
-          } else {
-            // Student hasn't joined any board yet, just show them
-            setMembers([{
-              id: profile.id,
-              name: profile.username || user?.displayName || "User",
-              email: profile.email || user?.email || "",
-              role: profile.role === 'admin' ? 'Admin' : 'Member',
-              status: 'Active'
-            }])
-            setIsMembersLoading(false)
-            return;
-          }
-        }
-
+        const targetBoardId = user.uid; // Admins use their own UID for the board
         const boardRef = doc(db, "boards", targetBoardId);
         const boardSnap = await getDoc(boardRef);
         
@@ -104,14 +84,14 @@ export default function SettingsPage() {
           setMembers(memberProfiles);
         }
       } catch (err) {
-        console.error("Failed to load members", err)
+        // Silently handle
       } finally {
         setIsMembersLoading(false)
       }
     };
 
     loadBoardAndMembers();
-  }, [user, profile, db]);
+  }, [user, profile, isAdmin, db]);
 
   const roomInviteCode = user?.uid || ""
 
@@ -160,7 +140,7 @@ export default function SettingsPage() {
         description: "You have successfully joined the teacher's board.",
       })
       setJoinCode("")
-      window.location.reload(); // Refresh to update member list
+      window.location.reload(); 
     } catch (error: any) {
       toast({
         variant: "destructive",
@@ -212,7 +192,6 @@ export default function SettingsPage() {
           <h1 className="text-xl font-bold tracking-tight whitespace-nowrap text-center text-slate-900">Board Settings</h1>
         </div>
         <div className="flex justify-end">
-          {/* Empty div to balance the grid columns */}
         </div>
       </header>
 

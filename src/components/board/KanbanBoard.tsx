@@ -66,26 +66,14 @@ export function KanbanBoard({ userRole, username }: KanbanBoardProps) {
   
   const roomInviteCode = user?.uid || ""
 
-  // Fetch workspace members for assignee dropdown
+  // Fetch workspace members for assignee dropdown - ADMIN ONLY
   React.useEffect(() => {
     const loadMembers = async () => {
-      if (!user) return;
+      // Only administrators need to load the full member list for filtering
+      if (!user || !isAdmin) return;
       
       try {
-        let targetBoardId = user.uid; // Default for teachers
-        
-        if (userRole !== 'admin') {
-          // Find board the student joined
-          const q = query(collection(db, "boards"), where("memberIds", "array-contains", user.uid));
-          const qSnap = await getDocs(q);
-          if (!qSnap.empty) {
-            targetBoardId = qSnap.docs[0].id;
-          } else {
-             setWorkspaceMembers([{ name: username || user.displayName || "User", role: userRole || 'member' }])
-             return;
-          }
-        }
-
+        const targetBoardId = user.uid; // Teachers always use their own UID as board ID
         const boardRef = doc(db, "boards", targetBoardId);
         const boardSnap = await getDoc(boardRef);
         
@@ -107,12 +95,12 @@ export function KanbanBoard({ userRole, username }: KanbanBoardProps) {
           setWorkspaceMembers(membersList);
         }
       } catch (err) {
-        console.error("Error loading board members", err)
+        // Silently handle if board doesn't exist yet
       }
     };
 
     loadMembers();
-  }, [user, userRole, username, db]);
+  }, [user, isAdmin, db]);
 
   const copyInviteCode = () => {
     navigator.clipboard.writeText(roomInviteCode)
