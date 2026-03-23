@@ -2,8 +2,9 @@
 "use client"
 
 import * as React from "react"
-import { Plus, MoreHorizontal, Pencil, Trash2 } from "lucide-react"
+import { Plus, MoreHorizontal, Pencil, Trash2, Check, X } from "lucide-react"
 import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
 import { Task, TaskStatus } from "@/types/task"
 import { TaskCard } from "./TaskCard"
 import { cn } from "@/lib/utils"
@@ -21,10 +22,22 @@ interface KanbanColumnProps {
   onAddTask: (status: TaskStatus) => void
   onTaskClick: (task: Task) => void
   onDropTask: (taskId: string, targetStatus: TaskStatus) => void
+  onEditColumn?: (oldName: string, newName: string) => void
+  onDeleteColumn?: (name: string) => void
 }
 
-export function KanbanColumn({ status, tasks, onAddTask, onTaskClick, onDropTask }: KanbanColumnProps) {
+export function KanbanColumn({ 
+  status, 
+  tasks, 
+  onAddTask, 
+  onTaskClick, 
+  onDropTask,
+  onEditColumn,
+  onDeleteColumn
+}: KanbanColumnProps) {
   const [isOver, setIsOver] = React.useState(false)
+  const [isEditing, setIsEditing] = React.useState(false)
+  const [editValue, setEditValue] = React.useState(status)
   const { toast } = useToast()
 
   const handleDragOver = (e: React.DragEvent) => {
@@ -47,19 +60,25 @@ export function KanbanColumn({ status, tasks, onAddTask, onTaskClick, onDropTask
     e.dataTransfer.setData("taskId", taskId)
   }
 
-  const handleEditColumn = () => {
-    toast({
-      title: "Edit Column",
-      description: `Feature to rename "${status}" is coming soon.`,
-    })
+  const handleStartEdit = () => {
+    setEditValue(status)
+    setIsEditing(true)
+  }
+
+  const handleCancelEdit = () => {
+    setIsEditing(false)
+    setEditValue(status)
+  }
+
+  const handleSaveEdit = () => {
+    if (editValue.trim() && editValue !== status) {
+      onEditColumn?.(status, editValue.trim())
+    }
+    setIsEditing(false)
   }
 
   const handleDeleteColumn = () => {
-    toast({
-      variant: "destructive",
-      title: "Delete Column",
-      description: `Column "${status}" cannot be deleted while it contains active tasks.`,
-    })
+    onDeleteColumn?.(status)
   }
 
   return (
@@ -73,13 +92,36 @@ export function KanbanColumn({ status, tasks, onAddTask, onTaskClick, onDropTask
       onDrop={handleDrop}
     >
       <div className="flex items-center justify-between px-2 py-3">
-        <div className="flex items-center gap-2">
-          <h2 className="font-headline font-semibold text-sm tracking-wide">{status.toUpperCase()}</h2>
-          <span className="flex items-center justify-center h-5 px-1.5 text-[10px] font-bold rounded-full bg-white border text-muted-foreground">
-            {tasks.length}
-          </span>
+        <div className="flex items-center gap-2 flex-1 mr-2">
+          {isEditing ? (
+            <div className="flex items-center gap-1 w-full">
+              <Input 
+                autoFocus
+                value={editValue}
+                onChange={(e) => setEditValue(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') handleSaveEdit()
+                  if (e.key === 'Escape') handleCancelEdit()
+                }}
+                className="h-7 text-xs py-0 px-2"
+              />
+              <Button variant="ghost" size="icon" className="h-6 w-6 text-emerald-500" onClick={handleSaveEdit}>
+                <Check className="h-3 w-3" />
+              </Button>
+              <Button variant="ghost" size="icon" className="h-6 w-6 text-destructive" onClick={handleCancelEdit}>
+                <X className="h-3 w-3" />
+              </Button>
+            </div>
+          ) : (
+            <>
+              <h2 className="font-headline font-semibold text-sm tracking-wide truncate max-w-[150px]">{status.toUpperCase()}</h2>
+              <span className="flex items-center justify-center h-5 px-1.5 text-[10px] font-bold rounded-full bg-white border text-muted-foreground">
+                {tasks.length}
+              </span>
+            </>
+          )}
         </div>
-        <div className="flex gap-1">
+        <div className="flex gap-1 shrink-0">
           <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => onAddTask(status)}>
             <Plus className="h-4 w-4" />
           </Button>
@@ -91,7 +133,7 @@ export function KanbanColumn({ status, tasks, onAddTask, onTaskClick, onDropTask
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
-              <DropdownMenuItem onClick={handleEditColumn} className="gap-2 cursor-pointer">
+              <DropdownMenuItem onClick={handleStartEdit} className="gap-2 cursor-pointer">
                 <Pencil className="h-4 w-4" />
                 Edit Column
               </DropdownMenuItem>

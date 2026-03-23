@@ -1,4 +1,4 @@
-export type TaskStatus = 'New' | 'In Development' | 'Resolved' | 'Closed';
+export type TaskStatus = string;
 
 export interface Task {
   id: string;
@@ -20,7 +20,9 @@ export interface Member {
   status: 'Active' | 'Inactive';
 }
 
-export const COLUMNS: TaskStatus[] = ['New', 'In Development', 'Resolved', 'Closed'];
+export const INITIAL_COLUMNS: string[] = ['New', 'In Development', 'Resolved', 'Closed'];
+
+export const COLUMNS = INITIAL_COLUMNS; // Legacy support
 
 export const TEAM_MEMBERS: string[] = [];
 

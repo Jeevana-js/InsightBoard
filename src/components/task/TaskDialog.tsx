@@ -1,3 +1,4 @@
+
 "use client"
 
 import * as React from "react"
@@ -34,13 +35,13 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { Task, TaskStatus, COLUMNS } from "@/types/task"
+import { Task, TaskStatus } from "@/types/task"
 import { generateTaskDetails } from "@/ai/flows/ai-task-description-generator"
 
 const taskSchema = z.object({
   title: z.string().min(3, "Title must be at least 3 characters"),
   description: z.string().optional(),
-  status: z.enum(['New', 'In Development', 'Resolved', 'Closed']),
+  status: z.string(),
   assignee: z.string().optional(),
   dueDate: z.string().optional().or(z.literal("")),
 })
@@ -50,11 +51,22 @@ interface TaskDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
   onSave: (task: Task) => void
+  onDelete?: (taskId: string) => void
   defaultStatus?: TaskStatus
   currentUsername?: string
+  columnOptions?: string[]
 }
 
-export function TaskDialog({ task, open, onOpenChange, onSave, defaultStatus, currentUsername }: TaskDialogProps) {
+export function TaskDialog({ 
+  task, 
+  open, 
+  onOpenChange, 
+  onSave, 
+  onDelete,
+  defaultStatus, 
+  currentUsername,
+  columnOptions = ['New', 'In Development', 'Resolved', 'Closed']
+}: TaskDialogProps) {
   const [isAiGenerating, setIsAiGenerating] = React.useState(false)
   const [subTasks, setSubTasks] = React.useState<string[]>(task?.subTasks || [])
   const [acceptanceCriteria, setAcceptanceCriteria] = React.useState<string[]>(task?.acceptanceCriteria || [])
@@ -64,7 +76,7 @@ export function TaskDialog({ task, open, onOpenChange, onSave, defaultStatus, cu
     defaultValues: {
       title: task?.title || "",
       description: task?.description || "",
-      status: task?.status || defaultStatus || 'New',
+      status: task?.status || defaultStatus || columnOptions[0] || 'New',
       assignee: task?.assignee || currentUsername || "",
       dueDate: task?.dueDate ? format(new Date(task.dueDate), "yyyy-MM-dd") : "",
     },
@@ -75,14 +87,14 @@ export function TaskDialog({ task, open, onOpenChange, onSave, defaultStatus, cu
       form.reset({
         title: task?.title || "",
         description: task?.description || "",
-        status: task?.status || defaultStatus || 'New',
+        status: task?.status || defaultStatus || columnOptions[0] || 'New',
         assignee: task?.assignee || currentUsername || "",
         dueDate: task?.dueDate ? format(new Date(task.dueDate), "yyyy-MM-dd") : "",
       })
       setSubTasks(task?.subTasks || [])
       setAcceptanceCriteria(task?.acceptanceCriteria || [])
     }
-  }, [open, task, defaultStatus, form, currentUsername])
+  }, [open, task, defaultStatus, form, currentUsername, columnOptions])
 
   const handleAiGenerate = async () => {
     const title = form.getValues("title")
@@ -120,13 +132,26 @@ export function TaskDialog({ task, open, onOpenChange, onSave, defaultStatus, cu
     onOpenChange(false)
   }
 
+  const handleDelete = () => {
+    if (task && onDelete) {
+      onDelete(task.id)
+    }
+  }
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-2xl max-h-[90vh] flex flex-col p-0 overflow-hidden">
         <DialogHeader className="p-6 pb-2">
-          <DialogTitle className="flex items-center gap-2">
-            {task ? "Edit Task" : "Create New Task"}
-            <span className="text-xs font-normal text-muted-foreground ml-2">ID: {task?.id || 'NEW'}</span>
+          <DialogTitle className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              {task ? "Edit Task" : "Create New Task"}
+              <span className="text-xs font-normal text-muted-foreground ml-2">ID: {task?.id || 'NEW'}</span>
+            </div>
+            {task && (
+              <Button variant="ghost" size="icon" className="text-destructive hover:bg-destructive/10" onClick={handleDelete}>
+                <Trash2 className="h-4 w-4" />
+              </Button>
+            )}
           </DialogTitle>
         </DialogHeader>
 
@@ -166,14 +191,14 @@ export function TaskDialog({ task, open, onOpenChange, onSave, defaultStatus, cu
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Status</FormLabel>
-                      <Select onValueChange={field.onChange} defaultValue={field.value}>
+                      <Select onValueChange={field.onChange} value={field.value}>
                         <FormControl>
                           <SelectTrigger>
                             <SelectValue placeholder="Select status" />
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent>
-                          {COLUMNS.map((status) => (
+                          {columnOptions.map((status) => (
                             <SelectItem key={status} value={status}>{status}</SelectItem>
                           ))}
                         </SelectContent>

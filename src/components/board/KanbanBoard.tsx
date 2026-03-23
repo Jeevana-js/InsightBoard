@@ -30,27 +30,19 @@ import {
 import { KanbanColumn } from "./KanbanColumn"
 import { TaskListView } from "./TaskListView"
 import { TaskDialog } from "@/components/task/TaskDialog"
-import { Task, TaskStatus, COLUMNS } from "@/types/task"
+import { Task, TaskStatus, INITIAL_COLUMNS } from "@/types/task"
 import { useToast } from "@/hooks/use-toast"
 import { cn } from "@/lib/utils"
 import { useAuth, useUser } from "@/firebase"
 import { signOut } from "firebase/auth"
 import { Badge } from "@/components/ui/badge"
 
-const INITIAL_TASKS: Task[] = []
-
-type ViewMode = 'board' | 'list';
-
-interface KanbanBoardProps {
-  userRole?: string
-  username?: string | null
-}
-
 export function KanbanBoard({ userRole, username }: KanbanBoardProps) {
   const [tasks, setTasks] = React.useState<Task[]>([])
+  const [columns, setColumns] = React.useState<string[]>(INITIAL_COLUMNS)
   const [searchQuery, setSearchQuery] = React.useState("")
   const [assigneeFilter, setAssigneeFilter] = React.useState("all")
-  const [viewMode, setViewMode] = React.useState<ViewMode>('board')
+  const [viewMode, setViewMode] = React.useState<'board' | 'list'>('board')
   const [isTaskDialogOpen, setIsTaskDialogOpen] = React.useState(false)
   const [selectedTask, setSelectedTask] = React.useState<Task | undefined>()
   const [activeStatus, setActiveStatus] = React.useState<TaskStatus | undefined>()
@@ -60,10 +52,6 @@ export function KanbanBoard({ userRole, username }: KanbanBoardProps) {
   const { user } = useUser()
   const router = useRouter()
   const { toast } = useToast()
-
-  React.useEffect(() => {
-    setTasks(INITIAL_TASKS)
-  }, [])
 
   const isAdmin = userRole === 'admin'
   const boardTitle = isAdmin ? "All Members Board" : "Project reviewer"
@@ -109,6 +97,16 @@ export function KanbanBoard({ userRole, username }: KanbanBoardProps) {
     setIsTaskDialogOpen(false)
   }
 
+  const handleDeleteTask = (taskId: string) => {
+    setTasks(tasks.filter(t => t.id !== taskId))
+    toast({ 
+      variant: "destructive",
+      title: "Task Deleted", 
+      description: `Task ${taskId} has been removed.`,
+    })
+    setIsTaskDialogOpen(false)
+  }
+
   const handleDropTask = (taskId: string, targetStatus: TaskStatus) => {
     const task = tasks.find(t => t.id === taskId)
     if (!task || task.status === targetStatus) return
@@ -117,6 +115,33 @@ export function KanbanBoard({ userRole, username }: KanbanBoardProps) {
     toast({ 
       title: "Task Moved", 
       description: `Moved ${taskId} to ${targetStatus}`,
+    })
+  }
+
+  const handleEditColumn = (oldName: string, newName: string) => {
+    setColumns(columns.map(c => c === oldName ? newName : c))
+    setTasks(tasks.map(t => t.status === oldName ? { ...t, status: newName } : t))
+    toast({
+      title: "Column Renamed",
+      description: `"${oldName}" is now "${newName}".`,
+    })
+  }
+
+  const handleDeleteColumn = (name: string) => {
+    const columnTasks = tasks.filter(t => t.status === name)
+    if (columnTasks.length > 0) {
+      toast({
+        variant: "destructive",
+        title: "Cannot Delete Column",
+        description: `Please move or delete the ${columnTasks.length} task(s) in "${name}" first.`,
+      })
+      return
+    }
+    setColumns(columns.filter(c => c !== name))
+    toast({
+      variant: "destructive",
+      title: "Column Removed",
+      description: `"${name}" has been deleted.`,
     })
   }
 
@@ -167,7 +192,7 @@ export function KanbanBoard({ userRole, username }: KanbanBoardProps) {
             {isAdmin && (
               <Popover>
                 <PopoverTrigger asChild>
-                  <Button variant="outline" className="border-accent text-accent hover:bg-accent/5 hover:text-accent">
+                  <Button variant="outline" className="border-accent text-accent hover:bg-accent hover:text-white transition-all">
                     <Share2 className="h-4 w-4 mr-2" />
                     Invite Students
                   </Button>
@@ -198,7 +223,7 @@ export function KanbanBoard({ userRole, username }: KanbanBoardProps) {
               </Popover>
             )}
 
-            <Button onClick={() => handleAddTask('New')} className="bg-primary hover:bg-primary/90">
+            <Button onClick={() => handleAddTask(columns[0] || 'New')} className="bg-primary hover:bg-primary/90">
               <Plus className="h-4 w-4 mr-2" />
               New Task
             </Button>
@@ -291,7 +316,7 @@ export function KanbanBoard({ userRole, username }: KanbanBoardProps) {
       <main className="flex-1 overflow-auto p-6">
         {viewMode === 'board' ? (
           <div className="flex gap-6 h-full min-w-max">
-            {COLUMNS.map((status) => (
+            {columns.map((status) => (
               <KanbanColumn 
                 key={status}
                 status={status}
@@ -299,8 +324,23 @@ export function KanbanBoard({ userRole, username }: KanbanBoardProps) {
                 onAddTask={handleAddTask}
                 onTaskClick={handleEditTask}
                 onDropTask={handleDropTask}
+                onEditColumn={handleEditColumn}
+                onDeleteColumn={handleDeleteColumn}
               />
             ))}
+            {columns.length < 10 && (
+              <Button 
+                variant="ghost" 
+                className="h-fit py-4 px-8 border-2 border-dashed border-muted text-muted-foreground hover:border-accent hover:text-accent transition-all rounded-xl"
+                onClick={() => {
+                  const newName = `Phase ${columns.length + 1}`
+                  setColumns([...columns, newName])
+                }}
+              >
+                <Plus className="h-4 w-4 mr-2" />
+                Add Column
+              </Button>
+            )}
           </div>
         ) : (
           <div className="max-w-6xl mx-auto">
@@ -314,9 +354,16 @@ export function KanbanBoard({ userRole, username }: KanbanBoardProps) {
         onOpenChange={setIsTaskDialogOpen} 
         task={selectedTask}
         onSave={handleSaveTask}
+        onDelete={handleDeleteTask}
         defaultStatus={activeStatus}
         currentUsername={username || undefined}
+        columnOptions={columns}
       />
     </div>
   )
+}
+
+interface KanbanBoardProps {
+  userRole?: string
+  username?: string | null
 }
