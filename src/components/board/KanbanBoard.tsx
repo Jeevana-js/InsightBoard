@@ -316,7 +316,7 @@ export function KanbanBoard({ userRole, username }: KanbanBoardProps) {
       <main className="flex-1 overflow-auto p-6">
         {viewMode === 'board' ? (
           <div className="flex gap-6 h-full min-w-max">
-            {columns.map((status) => (
+            {columns.map((status, index) => (
               <KanbanColumn 
                 key={status}
                 status={status}
@@ -326,6 +326,7 @@ export function KanbanBoard({ userRole, username }: KanbanBoardProps) {
                 onDropTask={handleDropTask}
                 onEditColumn={handleEditColumn}
                 onDeleteColumn={handleDeleteColumn}
+                showAddButton={index === 0}
               />
             ))}
             {columns.length < 10 && (

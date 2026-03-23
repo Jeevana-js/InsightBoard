@@ -24,6 +24,7 @@ interface KanbanColumnProps {
   onDropTask: (taskId: string, targetStatus: TaskStatus) => void
   onEditColumn?: (oldName: string, newName: string) => void
   onDeleteColumn?: (name: string) => void
+  showAddButton?: boolean
 }
 
 export function KanbanColumn({ 
@@ -33,7 +34,8 @@ export function KanbanColumn({
   onTaskClick, 
   onDropTask,
   onEditColumn,
-  onDeleteColumn
+  onDeleteColumn,
+  showAddButton = false
 }: KanbanColumnProps) {
   const [isOver, setIsOver] = React.useState(false)
   const [isEditing, setIsEditing] = React.useState(false)
@@ -122,9 +124,11 @@ export function KanbanColumn({
           )}
         </div>
         <div className="flex gap-1 shrink-0">
-          <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => onAddTask(status)}>
-            <Plus className="h-4 w-4" />
-          </Button>
+          {showAddButton && (
+            <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => onAddTask(status)}>
+              <Plus className="h-4 w-4" />
+            </Button>
+          )}
           
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
