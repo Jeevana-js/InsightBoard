@@ -1,4 +1,3 @@
-
 "use client"
 
 import * as React from "react"
@@ -39,7 +38,6 @@ export default function SettingsPage() {
   const db = useFirestore()
   const { toast } = useToast()
 
-  // Fetch the logged-in user's profile
   const profileRef = useMemoFirebase(() => {
     if (!user) return null
     return doc(db, "users", user.uid)
@@ -47,7 +45,6 @@ export default function SettingsPage() {
 
   const { data: profile, isLoading: isProfileLoading } = useDoc(profileRef)
 
-  // Populate the members list with the logged-in user when profile is loaded
   React.useEffect(() => {
     if (profile) {
       const currentUserMember: Member = {
@@ -102,7 +99,7 @@ export default function SettingsPage() {
 
   return (
     <div className="min-h-screen bg-background flex flex-col">
-      <header className="border-b bg-white px-6 py-4 flex items-center justify-between sticky top-0 z-10">
+      <header className="border-b bg-white px-6 py-4 flex items-center justify-between sticky top-0 z-50">
         <div className="flex items-center gap-4">
           <Button variant="ghost" size="sm" asChild>
             <Link href="/">
@@ -117,38 +114,40 @@ export default function SettingsPage() {
 
       <main className="flex-1 max-w-6xl w-full mx-auto p-6 md:p-8">
         <Tabs defaultValue="general" className="flex flex-col gap-8">
-          <TabsList className="flex h-auto bg-transparent border-none p-0 gap-4 w-fit mx-auto sticky top-24 z-10 bg-background/80 backdrop-blur-sm rounded-full px-6 py-2 border shadow-sm">
-            <TabsTrigger 
-              value="general" 
-              className="gap-2 px-4 py-2 data-[state=active]:bg-primary data-[state=active]:text-white rounded-full transition-all"
-            >
-              <SettingsIcon className="h-4 w-4" />
-              General
-            </TabsTrigger>
-            
-            {isAdmin && (
-              <>
-                <TabsTrigger 
-                  value="members" 
-                  className="gap-2 px-4 py-2 data-[state=active]:bg-primary data-[state=active]:text-white rounded-full transition-all"
-                >
-                  <Users className="h-4 w-4" />
-                  Member Access
-                </TabsTrigger>
-                <TabsTrigger 
-                  value="admin" 
-                  className="gap-2 px-4 py-2 data-[state=active]:bg-primary data-[state=active]:text-white rounded-full transition-all"
-                >
-                  <Shield className="h-4 w-4" />
-                  Admin Controls
-                </TabsTrigger>
-              </>
-            )}
-          </TabsList>
+          <div className="sticky top-20 z-40 w-full flex justify-center pb-4">
+            <TabsList className="flex h-auto bg-white/60 backdrop-blur-xl border border-white/40 p-1.5 gap-2 w-fit rounded-full shadow-[0_8px_32px_0_rgba(31,38,135,0.07)] transition-all duration-500">
+              <TabsTrigger 
+                value="general" 
+                className="gap-2 px-6 py-2 data-[state=active]:bg-primary data-[state=active]:text-white data-[state=active]:shadow-md rounded-full transition-all duration-300 font-medium"
+              >
+                <SettingsIcon className="h-4 w-4" />
+                General
+              </TabsTrigger>
+              
+              {isAdmin && (
+                <>
+                  <TabsTrigger 
+                    value="members" 
+                    className="gap-2 px-6 py-2 data-[state=active]:bg-primary data-[state=active]:text-white data-[state=active]:shadow-md rounded-full transition-all duration-300 font-medium"
+                  >
+                    <Users className="h-4 w-4" />
+                    Member Access
+                  </TabsTrigger>
+                  <TabsTrigger 
+                    value="admin" 
+                    className="gap-2 px-6 py-2 data-[state=active]:bg-primary data-[state=active]:text-white data-[state=active]:shadow-md rounded-full transition-all duration-300 font-medium"
+                  >
+                    <Shield className="h-4 w-4" />
+                    Admin Controls
+                  </TabsTrigger>
+                </>
+              )}
+            </TabsList>
+          </div>
 
           <div className="max-w-4xl w-full mx-auto">
-            <TabsContent value="general" className="mt-0 space-y-6 animate-in fade-in slide-in-from-bottom-2">
-              <Card>
+            <TabsContent value="general" className="mt-0 space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
+              <Card className="border-none shadow-sm ring-1 ring-border">
                 <CardHeader>
                   <CardTitle>Profile Details</CardTitle>
                   <CardDescription>
@@ -162,13 +161,13 @@ export default function SettingsPage() {
                       id="username" 
                       value={isProfileLoading ? "Loading..." : (profile?.username || user?.displayName || "")} 
                       readOnly
-                      className="bg-muted/30 border-none font-medium"
+                      className="bg-muted/30 border-none font-medium h-11"
                     />
                   </div>
                   <div className="space-y-2">
                     <Label>Your System Role</Label>
                     <div className="flex items-center gap-3">
-                      <Badge variant="secondary" className="h-7 px-3 text-sm capitalize bg-primary/10 text-primary border-primary/20">
+                      <Badge variant="secondary" className="h-8 px-4 text-sm capitalize bg-primary/10 text-primary border-primary/20">
                         {profile?.role || "Member"}
                       </Badge>
                       <p className="text-[11px] text-muted-foreground italic">
@@ -180,7 +179,7 @@ export default function SettingsPage() {
               </Card>
 
               {isAdmin && (
-                <Card className="border-accent/20 bg-accent/5 overflow-hidden">
+                <Card className="border-none bg-accent/5 overflow-hidden shadow-sm ring-1 ring-accent/20">
                   <div className="h-1 bg-accent w-full" />
                   <CardHeader>
                     <CardTitle className="flex items-center gap-2">
@@ -214,8 +213,8 @@ export default function SettingsPage() {
 
             {isAdmin && (
               <>
-                <TabsContent value="members" className="mt-0 space-y-6 animate-in fade-in slide-in-from-bottom-2">
-                  <Card>
+                <TabsContent value="members" className="mt-0 space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
+                  <Card className="border-none shadow-sm ring-1 ring-border">
                     <CardHeader className="flex flex-row items-center justify-between">
                       <div>
                         <CardTitle>Team Members</CardTitle>
@@ -230,8 +229,8 @@ export default function SettingsPage() {
                     </CardHeader>
                     <CardContent>
                       {isProfileLoading ? (
-                        <div className="flex items-center justify-center p-8">
-                          <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+                        <div className="flex items-center justify-center p-12">
+                          <Loader2 className="h-8 w-8 animate-spin text-primary" />
                         </div>
                       ) : (
                         <Table>
@@ -275,7 +274,7 @@ export default function SettingsPage() {
                                   <Button 
                                     variant="ghost" 
                                     size="icon" 
-                                    className="h-8 w-8 text-destructive"
+                                    className="h-8 w-8 text-destructive hover:bg-destructive/10"
                                     onClick={() => handleDeleteMember(member.id)}
                                     disabled={member.id === user?.uid}
                                   >
@@ -291,8 +290,8 @@ export default function SettingsPage() {
                   </Card>
                 </TabsContent>
 
-                <TabsContent value="admin" className="mt-0 space-y-6 animate-in fade-in slide-in-from-bottom-2">
-                  <Card className="border-destructive/20">
+                <TabsContent value="admin" className="mt-0 space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
+                  <Card className="border-none shadow-sm ring-1 ring-destructive/20">
                     <CardHeader className="bg-destructive/5">
                       <CardTitle className="text-destructive">Danger Zone</CardTitle>
                       <CardDescription>
