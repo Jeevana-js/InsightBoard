@@ -137,8 +137,11 @@ export function KanbanBoard({ userRole, username, rollNumber }: KanbanBoardProps
     columns.forEach(colId => {
       const baseCol = collection(db, "boards", activeBoardId, "columns", colId, "tasks")
       
-      // Filter based on workspace access
-      const q = query(baseCol, where("memberIds", "array-contains", user.uid))
+      // Teachers see all tasks where they are the ownerId (the workspace owner)
+      // Students see only tasks where their UID is in the memberIds array
+      const q = isAdmin 
+        ? query(baseCol, where("ownerId", "==", user.uid))
+        : query(baseCol, where("memberIds", "array-contains", user.uid))
 
       const unsub = onSnapshot(q, 
         (snap) => {
@@ -162,7 +165,7 @@ export function KanbanBoard({ userRole, username, rollNumber }: KanbanBoardProps
     })
 
     return () => unsubscribes.forEach(unsub => unsub())
-  }, [activeBoardId, columns, db, user, isAccessRevoked])
+  }, [activeBoardId, columns, db, user, isAccessRevoked, isAdmin])
 
   React.useEffect(() => {
     if (!boardData || !db || isAccessRevoked) return
