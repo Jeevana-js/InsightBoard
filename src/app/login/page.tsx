@@ -1,31 +1,55 @@
+
 "use client"
 
 import * as React from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
-import { LayoutGrid, Mail, Lock, Loader2 } from "lucide-react"
+import { LayoutGrid, Mail, Lock, Loader2, User as UserIcon, CheckCircle2, GraduationCap, Briefcase, Hash } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
-import { useAuth, useUser } from "@/firebase"
-import { signInWithEmailAndPassword, GoogleAuthProvider, signInWithPopup } from "firebase/auth"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { useAuth, useUser, useFirestore } from "@/firebase"
+import { signInWithEmailAndPassword, GoogleAuthProvider, signInWithPopup, updateProfile, User } from "firebase/auth"
+import { doc, getDoc, setDoc, updateDoc, arrayUnion } from "firebase/firestore"
 import { useToast } from "@/hooks/use-toast"
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 
 export default function LoginPage() {
   const [email, setEmail] = React.useState("")
   const [password, setPassword] = React.useState("")
   const [isLoading, setIsLoading] = React.useState(false)
+  
+  // Onboarding state for new Google users
+  const [showRoleSelection, setShowRoleSelection] = React.useState(false)
+  const [tempGoogleUser, setTempGoogleUser] = React.useState<User | null>(null)
+  const [onboardingData, setOnboardingData] = React.useState({
+    username: "",
+    role: "student" as "teacher" | "student",
+    inviteCode: ""
+  })
+
   const auth = useAuth()
-  const { user } = useUser()
+  const db = useFirestore()
+  const { user: currentUser, isUserLoading } = useUser()
   const router = useRouter()
   const { toast } = useToast()
 
   React.useEffect(() => {
-    if (user) {
-      router.push("/")
+    // Only auto-redirect if the user is logged in AND we aren't showing the onboarding UI
+    if (currentUser && !showRoleSelection && !isUserLoading) {
+      // We still check if they have a profile in page.tsx, so it's safe to push here
+      // unless we know they need onboarding.
+      const checkProfile = async () => {
+        const docSnap = await getDoc(doc(db, "users", currentUser.uid))
+        if (docSnap.exists()) {
+          router.push("/")
+        }
+      }
+      checkProfile()
     }
-  }, [user, router])
+  }, [currentUser, showRoleSelection, router, db, isUserLoading])
 
   const handleEmailLogin = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -48,8 +72,23 @@ export default function LoginPage() {
     setIsLoading(true)
     try {
       const provider = new GoogleAuthProvider()
-      await signInWithPopup(auth, provider)
-      router.push("/")
+      const result = await signInWithPopup(auth, provider)
+      const user = result.user
+
+      // Check if user exists in Firestore
+      const userDoc = await getDoc(doc(db, "users", user.uid))
+      
+      if (userDoc.exists()) {
+        router.push("/")
+      } else {
+        // New user detected via Google login
+        setTempGoogleUser(user)
+        setOnboardingData(prev => ({
+          ...prev,
+          username: user.displayName || ""
+        }))
+        setShowRoleSelection(true)
+      }
     } catch (error: any) {
       toast({
         variant: "destructive",
@@ -59,6 +98,160 @@ export default function LoginPage() {
     } finally {
       setIsLoading(false)
     }
+  }
+
+  const handleFinishOnboarding = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!tempGoogleUser) return
+
+    setIsLoading(true)
+    try {
+      const user = tempGoogleUser
+      const isInviteActive = onboardingData.inviteCode.trim().length > 5
+      const appRole = (isInviteActive || onboardingData.role === 'student') ? 'member' : 'admin'
+      
+      // Update Auth Profile if username changed
+      if (onboardingData.username !== user.displayName) {
+        await updateProfile(user, { displayName: onboardingData.username })
+      }
+
+      // 1. Create User Profile
+      await setDoc(doc(db, "users", user.uid), {
+        id: user.uid,
+        username: onboardingData.username,
+        email: user.email,
+        role: appRole,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
+      })
+
+      // 2. If Teacher, create workspace
+      if (appRole === 'admin') {
+        await setDoc(doc(db, "boards", user.uid), {
+          id: user.uid,
+          title: `${onboardingData.username}'s Workspace`,
+          ownerId: user.uid,
+          memberIds: [],
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString()
+        })
+      }
+
+      // 3. Join via code
+      if (isInviteActive) {
+        const targetCode = onboardingData.inviteCode.trim()
+        const boardRef = doc(db, "boards", targetCode)
+        const boardSnap = await getDoc(boardRef)
+        
+        if (boardSnap.exists()) {
+          await updateDoc(boardRef, {
+            memberIds: arrayUnion(user.uid)
+          })
+        }
+      }
+
+      toast({
+        title: "Profile Setup Complete",
+        description: `Welcome to SprintSync, ${onboardingData.username}!`,
+      })
+      router.push("/")
+    } catch (error: any) {
+      toast({
+        variant: "destructive",
+        title: "Setup Failed",
+        description: error.message,
+      })
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  if (showRoleSelection) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-muted/40 p-4 py-12">
+        <Card className="w-full max-w-md shadow-xl border-t-4 border-t-primary animate-in fade-in slide-in-from-bottom-4 duration-500">
+          <CardHeader className="space-y-1 text-center">
+            <div className="flex justify-center mb-4">
+              <div className="h-12 w-12 bg-primary rounded-xl flex items-center justify-center shadow-lg">
+                <UserIcon className="h-7 w-7 text-white" />
+              </div>
+            </div>
+            <CardTitle className="text-2xl font-bold tracking-tight">Complete Your Profile</CardTitle>
+            <CardDescription>
+              Tell us how you'll be using SprintSync
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <form onSubmit={handleFinishOnboarding} className="space-y-5">
+              <div className="space-y-2">
+                <Label htmlFor="username">Display Name</Label>
+                <Input 
+                  id="username" 
+                  value={onboardingData.username}
+                  onChange={(e) => setOnboardingData({...onboardingData, username: e.target.value})}
+                  required 
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="inviteCode">Invitation Code (Optional)</Label>
+                <div className="relative">
+                  <Hash className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                  <Input 
+                    id="inviteCode" 
+                    placeholder="Enter code to join a room" 
+                    className="pl-10"
+                    value={onboardingData.inviteCode}
+                    onChange={(e) => setOnboardingData({...onboardingData, inviteCode: e.target.value})}
+                  />
+                </div>
+              </div>
+
+              {onboardingData.inviteCode.trim().length <= 5 ? (
+                <div className="space-y-2">
+                  <Label htmlFor="role">Your Role</Label>
+                  <Select 
+                    value={onboardingData.role}
+                    onValueChange={(val) => setOnboardingData({...onboardingData, role: val as any})}
+                  >
+                    <SelectTrigger className="w-full">
+                      <SelectValue placeholder="Select your role" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="student">
+                        <div className="flex items-center">
+                          <GraduationCap className="h-4 w-4 mr-2 text-primary" />
+                          Student (Member)
+                        </div>
+                      </SelectItem>
+                      <SelectItem value="teacher">
+                        <div className="flex items-center">
+                          <Briefcase className="h-4 w-4 mr-2 text-primary" />
+                          Teacher (Admin)
+                        </div>
+                      </SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              ) : (
+                <Alert className="border-accent/20 bg-accent/5">
+                  <Hash className="h-4 w-4 text-accent" />
+                  <AlertTitle className="text-xs font-bold uppercase tracking-wider text-accent">Room Code Detected</AlertTitle>
+                  <AlertDescription className="text-xs">
+                    Joining a workspace will automatically assign you the <strong>Student Member</strong> role.
+                  </AlertDescription>
+                </Alert>
+              )}
+
+              <Button type="submit" className="w-full mt-4" disabled={isLoading}>
+                {isLoading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <CheckCircle2 className="h-4 w-4 mr-2" />}
+                Finish Setup
+              </Button>
+            </form>
+          </CardContent>
+        </Card>
+      </div>
+    )
   }
 
   return (
