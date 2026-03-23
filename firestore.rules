@@ -68,39 +68,30 @@ service cloud.firestore {
 
     /**
      * @description Rules for the User profile collection. Admins (Teachers) can view all users.
-     * @path /users/{userId}
-     * @allow (get) If the user is the owner or an admin. (list) If the user is an admin.
-     * @deny (list) If a regular student (member) attempts to list all users.
-     * @principle Path-based ownership for users and RBAC for admin listing.
      */
     match /users/{userId} {
       allow get: if isOwner(userId) || isAdmin();
       allow list: if isAdmin();
-      allow create: if isOwner(userId) && request.resource.data.id == userId;
-      allow update: if isOwner(userId) && request.resource.data.id == resource.data.id;
+      allow create: if isOwner(userId);
+      allow update: if isOwner(userId);
       allow delete: if isOwner(userId);
     }
 
     /**
      * @description Rules for Boards. Access is shared among the owner and memberIds.
-     * @path /boards/{boardId}
-     * @allow (get, list, update) If the user is the owner or in the memberIds array.
-     * @deny (create) If the ownerId in the data doesn't match the authenticated user.
-     * @principle Shared access model using UID arrays for collaborators.
+     * Allows joining if the user is adding themselves to memberIds.
      */
     match /boards/{boardId} {
-      allow get, list: if isBoardCollaborator(resource.data);
+      allow get: if isSignedIn(); // Allow any signed-in user to 'get' a board for joining checks
+      allow list: if isBoardCollaborator(resource.data);
       allow create: if isSignedIn() && request.resource.data.ownerId == request.auth.uid;
-      allow update: if isExistingCollaborator(resource.data) && request.resource.data.ownerId == resource.data.ownerId;
+      allow update: if isExistingCollaborator(resource.data) 
+                    || (isSignedIn() && request.resource.data.memberIds.hasAny([request.auth.uid]));
       allow delete: if isSignedIn() && resource != null && resource.data.ownerId == request.auth.uid;
     }
 
     /**
      * @description Rules for Columns. Uses denormalized board ownership fields.
-     * @path /boards/{boardId}/columns/{columnId}
-     * @allow (create) If the incoming data includes the user as a collaborator.
-     * @deny (update) If a user not listed in the denormalized memberIds attempts a write.
-     * @principle Authorization Independence via denormalization.
      */
     match /boards/{boardId}/columns/{columnId} {
       allow get, list: if isBoardCollaborator(resource.data);
@@ -111,10 +102,6 @@ service cloud.firestore {
 
     /**
      * @description Rules for Tasks. Uses denormalized board ownership fields for deep nesting.
-     * @path /boards/{boardId}/columns/{columnId}/tasks/{taskId}
-     * @allow (all) Based on the denormalized 'ownerId' and 'memberIds' on the Task document.
-     * @deny (read/write) If the user is not a member of the parent board.
-     * @principle Avoids multi-level get() lookups by checking local document fields.
      */
     match /boards/{boardId}/columns/{columnId}/tasks/{taskId} {
       allow get, list: if isBoardCollaborator(resource.data);

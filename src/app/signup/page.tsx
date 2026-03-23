@@ -1,4 +1,3 @@
-
 "use client"
 
 import * as React from "react"
@@ -10,7 +9,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { useAuth, useFirestore } from "@/firebase"
+import { useAuth, useUser, useFirestore } from "@/firebase"
 import { createUserWithEmailAndPassword, updateProfile } from "firebase/auth"
 import { doc, setDoc, arrayUnion, updateDoc } from "firebase/firestore"
 import { useToast } from "@/hooks/use-toast"
@@ -76,7 +75,19 @@ export default function SignupPage() {
         updatedAt: new Date().toISOString()
       })
 
-      // 2. If signing up via board invite code, add user to that board
+      // 2. If the user is a Teacher (admin), create their workspace board
+      if (appRole === 'admin') {
+        await setDoc(doc(db, "boards", user.uid), {
+          id: user.uid,
+          title: `${formData.username}'s Board`,
+          ownerId: user.uid,
+          memberIds: [],
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString()
+        })
+      }
+
+      // 3. If signing up via board invite code, add user to that board
       if (isInviteActive) {
         try {
           // In this simple model, the invite code is the Teacher's UID (which acts as board ID)
