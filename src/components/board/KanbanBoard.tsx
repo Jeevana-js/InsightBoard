@@ -1,4 +1,3 @@
-
 "use client"
 
 import * as React from "react"
@@ -192,7 +191,7 @@ export function KanbanBoard({ userRole, username }: KanbanBoardProps) {
             {isAdmin && (
               <Popover>
                 <PopoverTrigger asChild>
-                  <Button variant="outline" className="border-accent text-accent hover:bg-accent hover:text-white transition-all shadow-sm">
+                  <Button variant="outline" className="border-accent text-accent hover:bg-accent hover:text-accent-foreground transition-all shadow-sm">
                     <Share2 className="h-4 w-4 mr-2" />
                     Invite Students
                   </Button>
@@ -212,7 +211,7 @@ export function KanbanBoard({ userRole, username }: KanbanBoardProps) {
                       <Input 
                         readOnly 
                         value={roomInviteCode} 
-                        className="h-10 text-xs bg-muted/80 border border-accent/20 font-code text-center font-bold text-primary selection:bg-primary/20"
+                        className="h-10 text-xs bg-muted/30 border border-accent/20 font-code text-center font-bold text-slate-900 selection:bg-primary/20"
                       />
                       <Button size="icon" variant="secondary" className="h-10 w-10 shrink-0 shadow-sm" onClick={copyInviteCode}>
                         {hasCopied ? <Check className="h-5 w-5 text-emerald-500" /> : <Copy className="h-5 w-5" />}

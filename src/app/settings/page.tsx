@@ -168,7 +168,7 @@ export default function SettingsPage() {
                       id="username" 
                       value={isProfileLoading ? "Loading..." : (profile?.username || user?.displayName || "")} 
                       readOnly
-                      className="bg-muted/30 border-none font-medium h-11"
+                      className="bg-muted/30 border-none font-medium h-11 text-slate-900"
                     />
                   </div>
                   <div className="space-y-2">
@@ -202,7 +202,7 @@ export default function SettingsPage() {
                       <Input 
                         readOnly 
                         value={roomInviteCode} 
-                        className="bg-white border-dashed font-code text-sm tracking-wider text-center py-6 h-12"
+                        className="bg-white border-dashed font-code text-sm tracking-wider text-center py-6 h-12 text-slate-950 font-bold"
                       />
                       <Button variant="outline" size="icon" onClick={handleCopyCode} className="shrink-0 bg-white h-12 w-12">
                         {hasCopied ? <Check className="h-5 w-5 text-emerald-500" /> : <Copy className="h-5 w-5" />}
@@ -294,7 +294,7 @@ export default function SettingsPage() {
                 <TabsContent value="admin" className="mt-0 space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
                   <Card className="border-none shadow-sm ring-1 ring-destructive/20">
                     <CardHeader className="bg-destructive/5">
-                      <CardTitle className="text-destructive">Danger Zone</CardTitle>
+                      <CardTitle className="text-destructive hover:text-destructive">Danger Zone</CardTitle>
                       <CardDescription>
                         Irreversible actions that affect the entire board.
                       </CardDescription>
@@ -313,7 +313,7 @@ export default function SettingsPage() {
                           <p className="text-sm font-semibold text-destructive">Delete Permanently</p>
                           <p className="text-xs text-muted-foreground">Destroy this board and all its associated data forever.</p>
                         </div>
-                        <Button variant="destructive">Delete Board</Button>
+                        <Button variant="destructive" className="hover:bg-destructive hover:text-destructive-foreground">Delete Board</Button>
                       </div>
                     </CardContent>
                   </Card>
