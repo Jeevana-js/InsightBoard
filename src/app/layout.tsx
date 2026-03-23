@@ -4,8 +4,8 @@ import { Toaster } from "@/components/ui/toaster";
 import { FirebaseClientProvider } from '@/firebase/client-provider';
 
 export const metadata: Metadata = {
-  title: 'InsightBoard - Modern Agile Management',
-  description: 'AI-powered Kanban board for elite engineering teams.',
+  title: 'InsightBoard - Professional Agile Management',
+  description: 'AI-powered Kanban board for high-performance engineering teams.',
 };
 
 export default function RootLayout({

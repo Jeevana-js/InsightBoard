@@ -75,7 +75,8 @@ export function KanbanBoard({ userRole, username, rollNumber }: KanbanBoardProps
   const { toast } = useToast()
 
   const isAdmin = userRole === 'admin'
-  const boardTitle = isAdmin ? "All Members Board" : "My workspace"
+  const isBoardOwner = boardData?.ownerId === user?.uid
+  const boardTitle = isAdmin && isBoardOwner ? "All Members Board" : "My workspace"
   
   const roomInviteCode = activeBoardId || ""
 
@@ -403,7 +404,7 @@ export function KanbanBoard({ userRole, username, rollNumber }: KanbanBoardProps
             <div>
               <div className="flex items-center gap-2">
                 <h1 className="text-xl font-bold text-primary tracking-tight">{boardTitle}</h1>
-                {isAdmin ? (
+                {isAdmin && isBoardOwner ? (
                   <Badge className="bg-emerald-500/10 text-emerald-600 border-emerald-500/20 hover:bg-emerald-500/20 gap-1">
                     <ShieldCheck className="h-3 w-3" />
                     Teacher Admin
@@ -415,12 +416,12 @@ export function KanbanBoard({ userRole, username, rollNumber }: KanbanBoardProps
                 )}
               </div>
               <p className="text-[10px] text-muted-foreground font-medium uppercase tracking-widest">
-                {isAdmin ? "Global Oversight View" : "Personal Contributor Workspace"}
+                {isAdmin && isBoardOwner ? "Global Oversight View" : "Personal Contributor Workspace"}
               </p>
             </div>
           </div>
           <div className="flex items-center gap-3">
-            {isAdmin && (
+            {isAdmin && isBoardOwner && (
               <Popover>
                 <PopoverTrigger asChild>
                   <Button variant="outline" className="border-accent text-accent hover:bg-accent hover:text-accent-foreground transition-all shadow-sm">
@@ -500,7 +501,7 @@ export function KanbanBoard({ userRole, username, rollNumber }: KanbanBoardProps
             />
           </div>
 
-          {isAdmin && (
+          {isAdmin && isBoardOwner && (
             <div className="w-[240px]">
               <Select value={assigneeFilter} onValueChange={setAssigneeFilter}>
                 <SelectTrigger className="h-10 bg-white shadow-sm border-muted">
@@ -592,7 +593,7 @@ export function KanbanBoard({ userRole, username, rollNumber }: KanbanBoardProps
         userRollNumber={rollNumber}
         columnOptions={columns}
         memberOptions={memberNames}
-        isAdmin={isAdmin}
+        isAdmin={isAdmin && isBoardOwner}
       />
     </div>
   )
