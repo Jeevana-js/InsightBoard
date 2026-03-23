@@ -121,7 +121,6 @@ export function TaskDialog({
   }
 
   const generateNumericId = () => {
-    // Return exactly the roll number as requested, or a fallback if not available
     return userRollNumber || "225001";
   }
 
@@ -227,22 +226,35 @@ export function TaskDialog({
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel className="text-slate-900">Assignee *</FormLabel>
-                      <Select onValueChange={field.onChange} value={field.value}>
+                      <Select 
+                        onValueChange={field.onChange} 
+                        value={field.value}
+                        disabled={!isAdmin}
+                      >
                         <FormControl>
                           <SelectTrigger className="text-slate-900">
                             <SelectValue placeholder="Select assignee" />
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent>
-                          {memberOptions.length > 0 ? (
-                            memberOptions.map((name) => (
-                                <SelectItem key={name} value={name}>{name}</SelectItem>
-                            ))
+                          {isAdmin ? (
+                            memberOptions.length > 0 ? (
+                              memberOptions.map((name) => (
+                                  <SelectItem key={name} value={name}>{name}</SelectItem>
+                              ))
+                            ) : (
+                                <SelectItem value={currentUsername || "User"}>{currentUsername || "User"}</SelectItem>
+                            )
                           ) : (
-                              <SelectItem value={currentUsername || "User"}>{currentUsername || "User"}</SelectItem>
+                            <SelectItem value={currentUsername || "User"}>{currentUsername || "User"}</SelectItem>
                           )}
                         </SelectContent>
                       </Select>
+                      {!isAdmin && (
+                        <p className="text-[10px] text-muted-foreground italic px-1">
+                          As a student, you can only assign tasks to yourself.
+                        </p>
+                      )}
                       <FormMessage />
                     </FormItem>
                   )}
