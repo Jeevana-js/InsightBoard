@@ -4,7 +4,7 @@
 import * as React from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
-import { Search, Plus, LayoutGrid, List, SlidersHorizontal, User as UserIcon, LogOut, ShieldCheck, Share2, Copy, Check, Hash, Loader2, AlertCircle } from "lucide-react"
+import { Search, Plus, LayoutGrid, List, SlidersHorizontal, User as UserIcon, LogOut, ShieldCheck, Share2, Copy, Check, Hash, Loader2, AlertCircle, Users } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { 
@@ -78,7 +78,6 @@ export function KanbanBoard({ userRole, username, rollNumber }: KanbanBoardProps
   const isAdmin = userRole === 'admin'
   const boardTitle = isAdmin ? "All Members Board" : "Project reviewer"
   
-  // Important: roomInviteCode should only be displayed if a board is actually found
   const roomInviteCode = activeBoardId || ""
 
   React.useEffect(() => {
@@ -87,14 +86,12 @@ export function KanbanBoard({ userRole, username, rollNumber }: KanbanBoardProps
       setIsFindingBoard(true)
       
       try {
-        // 1. Check if user is a member of any board (prioritize joined workspaces)
         const q = query(collection(db, "boards"), where("memberIds", "array-contains", user.uid))
         const memberSnap = await getDocs(q)
         
         if (!memberSnap.empty) {
           setActiveBoardId(memberSnap.docs[0].id)
-        } else if (isAdmin) {
-          // 2. If no joined boards, check if they own one
+        } else {
           const ownBoardRef = doc(db, "boards", user.uid)
           const ownBoardSnap = await getDoc(ownBoardRef)
           if (ownBoardSnap.exists()) {
@@ -140,11 +137,8 @@ export function KanbanBoard({ userRole, username, rollNumber }: KanbanBoardProps
     columns.forEach(colId => {
       const baseCol = collection(db, "boards", activeBoardId, "columns", colId, "tasks")
       
-      // Determine if we should query as owner or member to satisfy security rules
-      const isBoardOwner = user.uid === activeBoardId;
-      const q = isBoardOwner 
-        ? query(baseCol, where("ownerId", "==", user.uid))
-        : query(baseCol, where("memberIds", "array-contains", user.uid))
+      // Filter based on workspace access
+      const q = query(baseCol, where("memberIds", "array-contains", user.uid))
 
       const unsub = onSnapshot(q, 
         (snap) => {
@@ -190,11 +184,6 @@ export function KanbanBoard({ userRole, username, rollNumber }: KanbanBoardProps
           }
         }
         setWorkspaceMembers(membersList)
-        
-        setAssigneeFilter(prev => {
-          if (prev === "all") return prev
-          return membersList.some(m => m.name === prev) ? prev : "all"
-        })
       } catch (err) {
       }
     }
@@ -502,18 +491,37 @@ export function KanbanBoard({ userRole, username, rollNumber }: KanbanBoardProps
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input 
               placeholder="Search tasks or IDs..." 
-              className="pl-10 h-9 bg-muted/30 border-none focus-visible:ring-1 transition-all"
+              className="pl-10 h-10 bg-muted/30 border-none focus-visible:ring-1 transition-all"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
             />
           </div>
+
+          <div className="w-[200px]">
+            <Select value={assigneeFilter} onValueChange={setAssigneeFilter}>
+              <SelectTrigger className="h-10 bg-white shadow-sm border-muted">
+                <div className="flex items-center gap-2">
+                  <Users className="h-4 w-4 text-muted-foreground" />
+                  <SelectValue placeholder="Filter by Member" />
+                </div>
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Members</SelectItem>
+                {workspaceMembers.map(member => (
+                  <SelectItem key={member.id} value={member.name}>
+                    {member.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
           
-          <div className="flex bg-muted/30 p-1 rounded-md ml-auto border shadow-sm">
+          <div className="flex bg-muted/30 p-1 rounded-md ml-auto border shadow-sm h-10 items-center">
             <Button 
               variant="ghost" 
               size="sm" 
               className={cn(
-                "h-7 px-2 rounded-sm transition-all",
+                "h-8 px-2 rounded-sm transition-all",
                 viewMode === 'board' ? "bg-white shadow-sm text-primary font-bold" : "text-muted-foreground"
               )}
               onClick={() => setViewMode('board')}
@@ -524,7 +532,7 @@ export function KanbanBoard({ userRole, username, rollNumber }: KanbanBoardProps
               variant="ghost" 
               size="sm" 
               className={cn(
-                "h-7 px-2 rounded-sm transition-all",
+                "h-8 px-2 rounded-sm transition-all",
                 viewMode === 'list' ? "bg-white shadow-sm text-primary font-bold" : "text-muted-foreground"
               )}
               onClick={() => setViewMode('list')}
