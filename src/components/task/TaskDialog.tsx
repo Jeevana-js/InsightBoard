@@ -48,6 +48,7 @@ const taskSchema = z.object({
 
 interface TaskDialogProps {
   task?: Task
+  tasks?: Task[]
   open: boolean
   onOpenChange: (open: boolean) => void
   onSave: (task: Task) => void
@@ -61,7 +62,8 @@ interface TaskDialogProps {
 }
 
 export function TaskDialog({ 
-  task, 
+  task,
+  tasks = [],
   open, 
   onOpenChange, 
   onSave, 
@@ -119,11 +121,23 @@ export function TaskDialog({
   }
 
   const generateNumericId = () => {
-    // Use roll number as the base, or a default if not available
     const basePrefix = userRollNumber || "225001";
-    // Generate a 4-digit random sequence for uniqueness
-    const randomSequence = Math.floor(1000 + Math.random() * 9000);
-    return `${basePrefix}-${randomSequence}`;
+    // Filter existing tasks to find the highest sequence number for this roll number
+    const relevantTasks = tasks.filter(t => t.id.startsWith(basePrefix));
+    let maxSuffix = 0;
+    
+    relevantTasks.forEach(t => {
+      const parts = t.id.split('-');
+      if (parts.length > 1) {
+        const suffix = parseInt(parts[1], 10);
+        if (!isNaN(suffix) && suffix > maxSuffix) {
+          maxSuffix = suffix;
+        }
+      }
+    });
+
+    const nextSuffix = (maxSuffix + 1).toString().padStart(2, '0');
+    return `${basePrefix}-${nextSuffix}`;
   }
 
   const onSubmit = (values: z.infer<typeof taskSchema>) => {

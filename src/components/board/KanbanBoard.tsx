@@ -563,6 +563,7 @@ export function KanbanBoard({ userRole, username, rollNumber }: KanbanBoardProps
         open={isTaskDialogOpen} 
         onOpenChange={setIsTaskDialogOpen} 
         task={selectedTask}
+        tasks={tasks}
         onSave={handleSaveTask}
         onDelete={handleDeleteTask}
         defaultStatus={activeStatus}
