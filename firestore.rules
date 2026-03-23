@@ -39,7 +39,7 @@ service cloud.firestore {
     function isBoardCollaborator(data) {
       return isSignedIn() && (
         request.auth.uid == data.ownerId || 
-        (data.memberIds != null && request.auth.uid in data.memberIds)
+        (data.memberIds != null && data.memberIds.hasAny([request.auth.uid]))
       );
     }
 
@@ -89,14 +89,13 @@ service cloud.firestore {
       // Students only see tasks they created. Teachers see everything.
       allow read: if canStudentSeeTask(resource.data);
       
-      // Create: user must be a collaborator and set themselves as creator (or be owner)
-      allow create: if isBoardCollaborator(request.resource.data) && (
+      // Create/Update: user must be a collaborator and set themselves as creator (or be owner)
+      allow create, update: if isBoardCollaborator(request.resource.data) && (
         request.auth.uid == request.resource.data.creatorId || 
         request.auth.uid == request.resource.data.ownerId
       );
       
-      // Update/Delete: must be the owner or the specific creator
-      allow update, delete: if canStudentSeeTask(resource.data);
+      allow delete: if canStudentSeeTask(resource.data);
     }
   }
 }
