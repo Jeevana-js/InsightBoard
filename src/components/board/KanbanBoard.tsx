@@ -1,7 +1,7 @@
 "use client"
 
 import * as React from "react"
-import { Search, Filter, Plus, LayoutGrid, List, SlidersHorizontal, User } from "lucide-react"
+import { Search, Plus, LayoutGrid, List, SlidersHorizontal, User } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { 
@@ -12,9 +12,11 @@ import {
   SelectValue 
 } from "@/components/ui/select"
 import { KanbanColumn } from "./KanbanColumn"
+import { TaskListView } from "./TaskListView"
 import { TaskDialog } from "@/components/task/TaskDialog"
 import { Task, TaskStatus, COLUMNS, TEAM_MEMBERS } from "@/types/task"
 import { useToast } from "@/hooks/use-toast"
+import { cn } from "@/lib/utils"
 
 const INITIAL_TASKS: Task[] = [
   {
@@ -52,17 +54,19 @@ const INITIAL_TASKS: Task[] = [
   }
 ]
 
+type ViewMode = 'board' | 'list';
+
 export function KanbanBoard() {
   const [tasks, setTasks] = React.useState<Task[]>([])
   const [searchQuery, setSearchQuery] = React.useState("")
   const [assigneeFilter, setAssigneeFilter] = React.useState("all")
+  const [viewMode, setViewMode] = React.useState<ViewMode>('board')
   const [isTaskDialogOpen, setIsTaskDialogOpen] = React.useState(false)
   const [selectedTask, setSelectedTask] = React.useState<Task | undefined>()
   const [activeStatus, setActiveStatus] = React.useState<TaskStatus | undefined>()
   const { toast } = useToast()
 
   React.useEffect(() => {
-    // Simulate loading
     setTasks(INITIAL_TASKS)
   }, [])
 
@@ -156,30 +160,52 @@ export function KanbanBoard() {
           </div>
 
           <div className="flex bg-muted/30 p-1 rounded-md ml-auto">
-            <Button variant="ghost" size="sm" className="h-7 px-2 rounded-sm bg-white shadow-sm text-primary">
+            <Button 
+              variant="ghost" 
+              size="sm" 
+              className={cn(
+                "h-7 px-2 rounded-sm transition-all",
+                viewMode === 'board' ? "bg-white shadow-sm text-primary" : "text-muted-foreground"
+              )}
+              onClick={() => setViewMode('board')}
+            >
               <LayoutGrid className="h-4 w-4" />
             </Button>
-            <Button variant="ghost" size="sm" className="h-7 px-2 rounded-sm text-muted-foreground">
+            <Button 
+              variant="ghost" 
+              size="sm" 
+              className={cn(
+                "h-7 px-2 rounded-sm transition-all",
+                viewMode === 'list' ? "bg-white shadow-sm text-primary" : "text-muted-foreground"
+              )}
+              onClick={() => setViewMode('list')}
+            >
               <List className="h-4 w-4" />
             </Button>
           </div>
         </div>
       </header>
 
-      {/* Kanban Scroll Area - Changed to allow vertical scrolling */}
+      {/* Main Content Area */}
       <main className="flex-1 overflow-auto p-6 scrollbar-thin scrollbar-thumb-muted-foreground/20 hover:scrollbar-thumb-muted-foreground/40">
-        <div className="flex gap-6 h-full min-w-max">
-          {COLUMNS.map((status) => (
-            <KanbanColumn 
-              key={status}
-              status={status}
-              tasks={filteredTasks.filter(t => t.status === status)}
-              onAddTask={handleAddTask}
-              onTaskClick={handleEditTask}
-              onDropTask={handleDropTask}
-            />
-          ))}
-        </div>
+        {viewMode === 'board' ? (
+          <div className="flex gap-6 h-full min-w-max">
+            {COLUMNS.map((status) => (
+              <KanbanColumn 
+                key={status}
+                status={status}
+                tasks={filteredTasks.filter(t => t.status === status)}
+                onAddTask={handleAddTask}
+                onTaskClick={handleEditTask}
+                onDropTask={handleDropTask}
+              />
+            ))}
+          </div>
+        ) : (
+          <div className="max-w-6xl mx-auto">
+            <TaskListView tasks={filteredTasks} onTaskClick={handleEditTask} />
+          </div>
+        )}
       </main>
 
       <TaskDialog 
