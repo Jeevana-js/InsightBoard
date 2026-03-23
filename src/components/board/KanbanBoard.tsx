@@ -4,7 +4,7 @@
 import * as React from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
-import { Search, Plus, LayoutGrid, List, SlidersHorizontal, User as UserIcon, LogOut, ShieldCheck, Share2, Copy, Check } from "lucide-react"
+import { Search, Plus, LayoutGrid, List, SlidersHorizontal, User as UserIcon, LogOut, ShieldCheck, Share2, Copy, Check, Link as LinkIcon } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { 
@@ -100,7 +100,7 @@ export function KanbanBoard({ userRole, username }: KanbanBoardProps) {
   }, [])
 
   const isAdmin = userRole === 'admin'
-  const boardTitle = isAdmin ? "All Members Board" : "My Workspace"
+  const boardTitle = isAdmin ? "All Members Board" : "Project reviewer"
   
   // Use user.uid as a mock room ID for this prototype
   const roomInviteLink = React.useMemo(() => {
