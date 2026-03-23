@@ -167,7 +167,7 @@ export function KanbanBoard({ userRole, username }: KanbanBoardProps) {
             {isAdmin && (
               <Popover>
                 <PopoverTrigger asChild>
-                  <Button variant="outline" className="border-accent text-accent hover:bg-accent/5">
+                  <Button variant="outline" className="border-accent text-accent hover:bg-accent/5 hover:text-accent">
                     <Share2 className="h-4 w-4 mr-2" />
                     Invite Students
                   </Button>
