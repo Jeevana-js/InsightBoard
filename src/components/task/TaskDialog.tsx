@@ -33,7 +33,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { Task, TaskStatus } from "@/types/task"
+import { Task, TaskStatus, INITIAL_COLUMNS } from "@/types/task"
 import { generateTaskDetails } from "@/ai/flows/ai-task-description-generator"
 
 const taskSchema = z.object({
@@ -63,7 +63,7 @@ export function TaskDialog({
   onDelete,
   defaultStatus, 
   currentUsername,
-  columnOptions = ['New', 'In Development', 'Resolved', 'Closed']
+  columnOptions = INITIAL_COLUMNS
 }: TaskDialogProps) {
   const [isAiGenerating, setIsAiGenerating] = React.useState(false)
 

@@ -25,6 +25,7 @@ export function TaskCard({ task, onClick, onDragStart }: TaskCardProps) {
         "cursor-grab active:cursor-grabbing hover:shadow-md transition-all duration-200 border-l-4",
         task.status === 'New' && "border-l-blue-400",
         task.status === 'In Development' && "border-l-accent",
+        task.status === 'Ready for Review' && "border-l-amber-400",
         task.status === 'Resolved' && "border-l-emerald-400",
         task.status === 'Closed' && "border-l-gray-300 opacity-75"
       )}

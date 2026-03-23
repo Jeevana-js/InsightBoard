@@ -13,6 +13,7 @@ import {
 import { Badge } from "@/components/ui/badge"
 import { Task } from "@/types/task"
 import { Calendar, User } from "lucide-react"
+import { cn } from "@/lib/utils"
 
 interface TaskListViewProps {
   tasks: Task[]
@@ -52,6 +53,7 @@ export function TaskListView({ tasks, onTaskClick }: TaskListViewProps) {
                     "text-[10px] font-bold",
                     task.status === 'New' && "border-blue-400 text-blue-600",
                     task.status === 'In Development' && "border-accent text-accent",
+                    task.status === 'Ready for Review' && "border-amber-400 text-amber-600",
                     task.status === 'Resolved' && "border-emerald-400 text-emerald-600",
                     task.status === 'Closed' && "border-gray-300 text-gray-500"
                   )}
@@ -91,5 +93,3 @@ export function TaskListView({ tasks, onTaskClick }: TaskListViewProps) {
     </div>
   )
 }
-
-import { cn } from "@/lib/utils"

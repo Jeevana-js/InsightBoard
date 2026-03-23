@@ -18,7 +18,7 @@ export interface Member {
   status: 'Active' | 'Inactive';
 }
 
-export const INITIAL_COLUMNS: string[] = ['New', 'In Development', 'Resolved', 'Closed'];
+export const INITIAL_COLUMNS: string[] = ['New', 'In Development', 'Ready for Review', 'Resolved', 'Closed'];
 
 export const COLUMNS = INITIAL_COLUMNS; // Legacy support
 
