@@ -222,17 +222,11 @@ export default function SettingsPage() {
               <>
                 <TabsContent value="members" className="mt-0 space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
                   <Card className="border-none shadow-sm ring-1 ring-border">
-                    <CardHeader className="flex flex-row items-center justify-between">
-                      <div>
-                        <CardTitle>Team Members</CardTitle>
-                        <CardDescription>
-                          Manage who has access to this board and their permission levels.
-                        </CardDescription>
-                      </div>
-                      <Button size="sm">
-                        <UserPlus className="h-4 w-4 mr-2" />
-                        Invite Member
-                      </Button>
+                    <CardHeader>
+                      <CardTitle>Team Members</CardTitle>
+                      <CardDescription>
+                        Manage who has access to this board and their permission levels.
+                      </CardDescription>
                     </CardHeader>
                     <CardContent>
                       {isProfileLoading ? (
