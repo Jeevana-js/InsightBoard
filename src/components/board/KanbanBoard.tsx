@@ -1,7 +1,8 @@
+
 "use client"
 
 import * as React from "react"
-import { Search, Plus, LayoutGrid, List, SlidersHorizontal, User } from "lucide-react"
+import { Search, Plus, LayoutGrid, List, SlidersHorizontal, User, RotateCcw } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { 
@@ -11,6 +12,15 @@ import {
   SelectTrigger, 
   SelectValue 
 } from "@/components/ui/select"
+import {
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetHeader,
+  SheetTitle,
+  SheetFooter,
+} from "@/components/ui/sheet"
+import { Label } from "@/components/ui/label"
 import { KanbanColumn } from "./KanbanColumn"
 import { TaskListView } from "./TaskListView"
 import { TaskDialog } from "@/components/task/TaskDialog"
@@ -58,10 +68,12 @@ type ViewMode = 'board' | 'list';
 
 export function KanbanBoard() {
   const [tasks, setTasks] = React.useState<Task[]>([])
+  const [boardName, setBoardName] = React.useState("SprintSync Board")
   const [searchQuery, setSearchQuery] = React.useState("")
   const [assigneeFilter, setAssigneeFilter] = React.useState("all")
   const [viewMode, setViewMode] = React.useState<ViewMode>('board')
   const [isTaskDialogOpen, setIsTaskDialogOpen] = React.useState(false)
+  const [isSettingsOpen, setIsSettingsOpen] = React.useState(false)
   const [selectedTask, setSelectedTask] = React.useState<Task | undefined>()
   const [activeStatus, setActiveStatus] = React.useState<TaskStatus | undefined>()
   const { toast } = useToast()
@@ -110,6 +122,15 @@ export function KanbanBoard() {
     })
   }
 
+  const handleResetBoard = () => {
+    setTasks(INITIAL_TASKS)
+    toast({
+      title: "Board Reset",
+      description: "The board has been restored to its initial state.",
+    })
+    setIsSettingsOpen(false)
+  }
+
   return (
     <div className="flex flex-col h-screen overflow-hidden bg-background">
       {/* Top Header/Toolbar */}
@@ -119,10 +140,15 @@ export function KanbanBoard() {
             <div className="h-8 w-8 bg-primary rounded-lg flex items-center justify-center">
               <LayoutGrid className="h-5 w-5 text-white" />
             </div>
-            <h1 className="text-xl font-headline font-bold text-primary tracking-tight">SprintSync Board</h1>
+            <h1 className="text-xl font-headline font-bold text-primary tracking-tight">{boardName}</h1>
           </div>
           <div className="flex items-center gap-3">
-             <Button variant="outline" size="sm" className="hidden sm:flex">
+             <Button 
+               variant="outline" 
+               size="sm" 
+               className="hidden sm:flex"
+               onClick={() => setIsSettingsOpen(true)}
+             >
               <SlidersHorizontal className="h-4 w-4 mr-2" />
               Settings
             </Button>
@@ -207,6 +233,58 @@ export function KanbanBoard() {
           </div>
         )}
       </main>
+
+      {/* Settings Sheet */}
+      <Sheet open={isSettingsOpen} onOpenChange={setIsSettingsOpen}>
+        <SheetContent>
+          <SheetHeader>
+            <SheetTitle>Board Settings</SheetTitle>
+            <SheetDescription>
+              Manage your workspace and board configuration.
+            </SheetDescription>
+          </SheetHeader>
+          <div className="py-6 space-y-6">
+            <div className="space-y-2">
+              <Label htmlFor="board-name">Board Name</Label>
+              <Input 
+                id="board-name" 
+                value={boardName} 
+                onChange={(e) => setBoardName(e.target.value)}
+                placeholder="Enter board name..."
+              />
+            </div>
+            
+            <div className="pt-4 border-t">
+              <h3 className="text-sm font-semibold mb-3">Statistics</h3>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="bg-muted/50 p-3 rounded-lg">
+                  <p className="text-xs text-muted-foreground mb-1">Total Tasks</p>
+                  <p className="text-xl font-bold">{tasks.length}</p>
+                </div>
+                <div className="bg-muted/50 p-3 rounded-lg">
+                  <p className="text-xs text-muted-foreground mb-1">Filtered</p>
+                  <p className="text-xl font-bold">{filteredTasks.length}</p>
+                </div>
+              </div>
+            </div>
+
+            <div className="pt-4 border-t">
+              <h3 className="text-sm font-semibold text-destructive mb-3">Danger Zone</h3>
+              <Button 
+                variant="destructive" 
+                className="w-full justify-start"
+                onClick={handleResetBoard}
+              >
+                <RotateCcw className="h-4 w-4 mr-2" />
+                Reset to Default Tasks
+              </Button>
+            </div>
+          </div>
+          <SheetFooter>
+            <Button className="w-full" onClick={() => setIsSettingsOpen(false)}>Close</Button>
+          </SheetFooter>
+        </SheetContent>
+      </Sheet>
 
       <TaskDialog 
         open={isTaskDialogOpen} 
