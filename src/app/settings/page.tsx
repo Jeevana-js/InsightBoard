@@ -78,10 +78,10 @@ export default function SettingsPage() {
     findActiveBoard()
   }, [user, db])
 
-  // Fetch all board members - ONLY FOR ADMINS
+  // Fetch all board members
   React.useEffect(() => {
     const loadBoardAndMembers = async () => {
-      if (!user || !profile || !isAdmin || !activeBoardId) return;
+      if (!user || !profile || !activeBoardId) return;
       
       setIsMembersLoading(true)
       try {
@@ -117,7 +117,7 @@ export default function SettingsPage() {
     };
 
     loadBoardAndMembers();
-  }, [user, profile, isAdmin, db, activeBoardId]);
+  }, [user, profile, db, activeBoardId]);
 
   const roomInviteCode = activeBoardId || user?.uid || ""
 
@@ -274,9 +274,9 @@ export default function SettingsPage() {
           <Star
             key={star}
             className={cn(
-              "h-4 w-4 cursor-pointer transition-colors",
+              "h-4 w-4 transition-colors",
               star <= value ? "fill-amber-400 text-amber-400" : "text-muted-foreground/30",
-              readOnly && "cursor-default"
+              !readOnly ? "cursor-pointer" : "cursor-default"
             )}
             onClick={() => !readOnly && onChange?.(star)}
           />
@@ -316,23 +316,22 @@ export default function SettingsPage() {
                   General
                 </TabsTrigger>
                 
+                <TabsTrigger 
+                  value="members" 
+                  className="gap-2 px-8 py-2.5 data-[state=active]:bg-primary data-[state=active]:text-white data-[state=active]:shadow-lg rounded-xl transition-all duration-300 font-semibold text-sm"
+                >
+                  <Users className="h-4 w-4" />
+                  {isAdmin ? "Member Access" : "Team Members"}
+                </TabsTrigger>
+
                 {isAdmin && (
-                  <>
-                    <TabsTrigger 
-                      value="members" 
-                      className="gap-2 px-8 py-2.5 data-[state=active]:bg-primary data-[state=active]:text-white data-[state=active]:shadow-lg rounded-xl transition-all duration-300 font-semibold text-sm"
-                    >
-                      <Users className="h-4 w-4" />
-                      Member Access
-                    </TabsTrigger>
-                    <TabsTrigger 
-                      value="admin" 
-                      className="gap-2 px-8 py-2.5 data-[state=active]:bg-primary data-[state=active]:text-white data-[state=active]:shadow-lg rounded-xl transition-all duration-300 font-semibold text-sm"
-                    >
-                      <Shield className="h-4 w-4" />
-                      Admin Controls
-                    </TabsTrigger>
-                  </>
+                  <TabsTrigger 
+                    value="admin" 
+                    className="gap-2 px-8 py-2.5 data-[state=active]:bg-primary data-[state=active]:text-white data-[state=active]:shadow-lg rounded-xl transition-all duration-300 font-semibold text-sm"
+                  >
+                    <Shield className="h-4 w-4" />
+                    Admin Controls
+                  </TabsTrigger>
                 )}
               </TabsList>
             </div>
@@ -441,124 +440,131 @@ export default function SettingsPage() {
               )}
             </TabsContent>
 
-            {isAdmin && (
-              <>
-                <TabsContent value="members" className="mt-0 space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
-                  <Card className="border-none shadow-sm ring-1 ring-border">
-                    <CardHeader>
-                      <CardTitle>Team Members</CardTitle>
-                      <CardDescription>
-                        Manage who has access to this board and their permission levels.
-                      </CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                      {isMembersLoading ? (
-                        <div className="flex items-center justify-center p-12">
-                          <Loader2 className="h-8 w-8 animate-spin text-primary" />
-                        </div>
-                      ) : (
-                        <Table>
-                          <TableHeader>
-                            <TableRow>
-                              <TableHead>User</TableHead>
-                              <TableHead>Role</TableHead>
-                              <TableHead>Rating</TableHead>
-                              <TableHead className="text-right">Actions</TableHead>
-                            </TableRow>
-                          </TableHeader>
-                          <TableBody>
-                            {members.map((member) => (
-                              <TableRow key={member.id}>
-                                <TableCell>
-                                  <div className="flex items-center gap-2">
-                                    <div>
-                                      <p className="font-medium text-slate-900">{member.name}</p>
-                                      <p className="text-xs text-muted-foreground">{member.email}</p>
-                                    </div>
-                                    {member.role === 'Admin' && (
-                                      <Badge variant="outline" className="text-[9px] h-4 px-1 uppercase tracking-tighter opacity-70">Admin</Badge>
-                                    )}
-                                  </div>
-                                </TableCell>
-                                <TableCell>
-                                  <Select 
-                                    value={member.role} 
-                                    onValueChange={(v) => handleUpdateRole(member.id, v as any)}
-                                  >
-                                    <SelectTrigger className="w-[110px] h-8 text-xs">
-                                      <SelectValue />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                      <SelectItem value="Admin">Admin</SelectItem>
-                                      <SelectItem value="Member">Member</SelectItem>
-                                    </SelectContent>
-                                  </Select>
-                                </TableCell>
-                                <TableCell>
-                                  {member.role === 'Member' ? (
-                                    <StarRating 
-                                      value={member.rating || 0} 
-                                      onChange={(val) => handleUpdateRating(member.id, val)}
-                                    />
-                                  ) : (
-                                    <span className="text-[10px] text-muted-foreground italic">N/A</span>
-                                  )}
-                                </TableCell>
-                                <TableCell className="text-right">
-                                  <Button 
-                                    variant="ghost" 
-                                    size="icon" 
-                                    className="h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/10 transition-colors"
-                                    onClick={() => handleDeleteMember(member.id)}
-                                    disabled={member.id === user?.uid}
-                                  >
-                                    <Trash2 className="h-4 w-4" />
-                                  </Button>
-                                </TableCell>
-                              </TableRow>
-                            ))}
-                            {members.length === 0 && (
-                                <TableRow>
-                                    <TableCell colSpan={4} className="text-center py-8 text-muted-foreground">
-                                        No members found for this workspace.
-                                    </TableCell>
-                                </TableRow>
+            <TabsContent value="members" className="mt-0 space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
+              <Card className="border-none shadow-sm ring-1 ring-border">
+                <CardHeader>
+                  <CardTitle>{isAdmin ? "Team Management" : "Team Members"}</CardTitle>
+                  <CardDescription>
+                    {isAdmin ? "Manage who has access to this board and their permission levels." : "View the participants of this workspace."}
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  {isMembersLoading ? (
+                    <div className="flex items-center justify-center p-12">
+                      <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                    </div>
+                  ) : (
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>User</TableHead>
+                          <TableHead>Role</TableHead>
+                          <TableHead>Rating</TableHead>
+                          {isAdmin && <TableHead className="text-right">Actions</TableHead>}
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {members.map((member) => (
+                          <TableRow key={member.id}>
+                            <TableCell>
+                              <div className="flex items-center gap-2">
+                                <div>
+                                  <p className="font-medium text-slate-900">{member.name}</p>
+                                  <p className="text-xs text-muted-foreground">{member.email}</p>
+                                </div>
+                                {member.role === 'Admin' && (
+                                  <Badge variant="outline" className="text-[9px] h-4 px-1 uppercase tracking-tighter opacity-70">Admin</Badge>
+                                )}
+                              </div>
+                            </TableCell>
+                            <TableCell>
+                              {isAdmin ? (
+                                <Select 
+                                  value={member.role} 
+                                  onValueChange={(v) => handleUpdateRole(member.id, v as any)}
+                                >
+                                  <SelectTrigger className="w-[110px] h-8 text-xs">
+                                    <SelectValue />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    <SelectItem value="Admin">Admin</SelectItem>
+                                    <SelectItem value="Member">Member</SelectItem>
+                                  </SelectContent>
+                                </Select>
+                              ) : (
+                                <Badge variant="secondary" className="capitalize">
+                                  {member.role.toLowerCase()}
+                                </Badge>
+                              )}
+                            </TableCell>
+                            <TableCell>
+                              {member.role === 'Member' ? (
+                                <StarRating 
+                                  value={member.rating || 0} 
+                                  onChange={(val) => handleUpdateRating(member.id, val)}
+                                  readOnly={!isAdmin}
+                                />
+                              ) : (
+                                <span className="text-[10px] text-muted-foreground italic">N/A</span>
+                              )}
+                            </TableCell>
+                            {isAdmin && (
+                              <TableCell className="text-right">
+                                <Button 
+                                  variant="ghost" 
+                                  size="icon" 
+                                  className="h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/10 transition-colors"
+                                  onClick={() => handleDeleteMember(member.id)}
+                                  disabled={member.id === user?.uid}
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                </Button>
+                              </TableCell>
                             )}
-                          </TableBody>
-                        </Table>
-                      )}
-                    </CardContent>
-                  </Card>
-                </TabsContent>
+                          </TableRow>
+                        ))}
+                        {members.length === 0 && (
+                            <TableRow>
+                                <TableCell colSpan={isAdmin ? 4 : 3} className="text-center py-8 text-muted-foreground">
+                                    No members found for this workspace.
+                                </TableCell>
+                            </TableRow>
+                        )}
+                      </TableBody>
+                    </Table>
+                  )}
+                </CardContent>
+              </Card>
+            </TabsContent>
 
-                <TabsContent value="admin" className="mt-0 space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
-                  <Card className="border-none shadow-sm ring-1 ring-destructive/20">
-                    <CardHeader className="bg-destructive/5">
-                      <CardTitle className="text-destructive hover:text-destructive">Danger Zone</CardTitle>
-                      <CardDescription>
-                        Irreversible actions that affect the entire board.
-                      </CardDescription>
-                    </CardHeader>
-                    <CardContent className="pt-6 space-y-6">
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <p className="text-sm font-semibold text-slate-900">Reset Board State</p>
-                          <p className="text-xs text-muted-foreground">Clear all current tasks and restore initial demo content.</p>
-                        </div>
-                        <Button variant="outline">Reset Board</Button>
+            {isAdmin && (
+              <TabsContent value="admin" className="mt-0 space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
+                <Card className="border-none shadow-sm ring-1 ring-destructive/20">
+                  <CardHeader className="bg-destructive/5">
+                    <CardTitle className="text-destructive hover:text-destructive">Danger Zone</CardTitle>
+                    <CardDescription>
+                      Irreversible actions that affect the entire board.
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="pt-6 space-y-6">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-sm font-semibold text-slate-900">Reset Board State</p>
+                        <p className="text-xs text-muted-foreground">Clear all current tasks and restore initial demo content.</p>
                       </div>
-                      <Separator />
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <p className="text-sm font-semibold text-destructive">Delete Permanently</p>
-                          <p className="text-xs text-muted-foreground">Destroy this board and all its associated data forever.</p>
-                        </div>
-                        <Button variant="destructive" className="hover:bg-destructive hover:text-destructive-foreground">Delete Board</Button>
+                      <Button variant="outline">Reset Board</Button>
+                    </div>
+                    <Separator />
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-sm font-semibold text-destructive">Delete Permanently</p>
+                        <p className="text-xs text-muted-foreground">Destroy this board and all its associated data forever.</p>
                       </div>
-                    </CardContent>
-                  </Card>
-                </TabsContent>
-              </>
+                      <Button variant="destructive" className="hover:bg-destructive hover:text-destructive-foreground">Delete Board</Button>
+                    </div>
+                  </CardContent>
+                </Card>
+              </TabsContent>
             )}
           </div>
         </Tabs>
