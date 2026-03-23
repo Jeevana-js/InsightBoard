@@ -1,0 +1,127 @@
+/**
+ * SprintSync Board Security Rules
+ * 
+ * Core Philosophy:
+ * This ruleset implements a robust, role-based access control (RBAC) and ownership model. 
+ * It distinguishes between 'admin' (Teachers) and 'member' (Students). Teachers have 
+ * elevated privileges, such as viewing all user profiles. Collaborative access to 
+ * Kanban boards is managed through a membership model (owner + member list).
+ * 
+ * Data Structure:
+ * - /users/{userId}: Profile documents containing the global 'role'.
+ * - /boards/{boardId}: Root collection for Kanban boards.
+ * - /boards/{boardId}/columns/{columnId}: Nested columns.
+ * - /boards/{boardId}/columns/{columnId}/tasks/{taskId}: Deeply nested tasks.
+ * 
+ * Key Security Decisions:
+ * - Admin Access: Teachers (admins) can list all users to populate the 'members board'.
+ * - Denormalization for Authorization: To optimize performance and maintain 
+ *   "Authorization Independence," the 'ownerId' and 'memberIds' from a Board are 
+ *   denormalized (copied) into every child Column and grandchild Task. This allows 
+ *   for immediate permission checks without expensive parent-document lookups.
+ * - Relational Integrity: On creation, documents must correctly identify their owner. 
+ *   Relational fields (like ownerId) are immutable once set.
+ * 
+ * Prototyping Mode:
+ * Rules enforce strict authorization (who can access) but remain flexible regarding 
+ * the specific schema/fields of the data (data shapes) to allow for rapid development.
+ */
+
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // --- Global Helper Functions ---
+
+    /** Checks if the request is from an authenticated user. */
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    /** Checks if the authenticated user's UID matches the provided userId. */
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    /** 
+     * Fetches the user's role from their profile document.
+     * Used for global admin (Teacher) permissions.
+     */
+    function isAdmin() {
+      return isSignedIn() && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+    }
+
+    /** 
+     * Validates if the user is a collaborator on a board-related resource.
+     * Works for Boards, Columns, and Tasks due to denormalization.
+     */
+    function isBoardCollaborator(data) {
+      return isSignedIn() && (request.auth.uid == data.ownerId || request.auth.uid in data.memberIds);
+    }
+
+    /** Combines membership check with existence check for updates/deletes. */
+    function isExistingCollaborator(data) {
+      return resource != null && isBoardCollaborator(data);
+    }
+
+    // --- Collection Rules ---
+
+    /**
+     * @description Rules for the User profile collection. Admins (Teachers) can view all users.
+     * @path /users/{userId}
+     * @allow (get) If the user is the owner or an admin. (list) If the user is an admin.
+     * @deny (list) If a regular student (member) attempts to list all users.
+     * @principle Path-based ownership for users and RBAC for admin listing.
+     */
+    match /users/{userId} {
+      allow get: if isOwner(userId) || isAdmin();
+      allow list: if isAdmin();
+      allow create: if isOwner(userId) && request.resource.data.id == userId;
+      allow update: if isOwner(userId) && request.resource.data.id == resource.data.id;
+      allow delete: if isOwner(userId);
+    }
+
+    /**
+     * @description Rules for Boards. Access is shared among the owner and memberIds.
+     * @path /boards/{boardId}
+     * @allow (get, list, update) If the user is the owner or in the memberIds array.
+     * @deny (create) If the ownerId in the data doesn't match the authenticated user.
+     * @principle Shared access model using UID arrays for collaborators.
+     */
+    match /boards/{boardId} {
+      allow get, list: if isBoardCollaborator(resource.data);
+      allow create: if isSignedIn() && request.resource.data.ownerId == request.auth.uid;
+      allow update: if isExistingCollaborator(resource.data) && request.resource.data.ownerId == resource.data.ownerId;
+      allow delete: if isSignedIn() && resource != null && resource.data.ownerId == request.auth.uid;
+    }
+
+    /**
+     * @description Rules for Columns. Uses denormalized board ownership fields.
+     * @path /boards/{boardId}/columns/{columnId}
+     * @allow (create) If the incoming data includes the user as a collaborator.
+     * @deny (update) If a user not listed in the denormalized memberIds attempts a write.
+     * @principle Authorization Independence via denormalization.
+     */
+    match /boards/{boardId}/columns/{columnId} {
+      allow get, list: if isBoardCollaborator(resource.data);
+      allow create: if isBoardCollaborator(request.resource.data);
+      allow update: if isExistingCollaborator(resource.data) && request.resource.data.ownerId == resource.data.ownerId;
+      allow delete: if isExistingCollaborator(resource.data);
+    }
+
+    /**
+     * @description Rules for Tasks. Uses denormalized board ownership fields for deep nesting.
+     * @path /boards/{boardId}/columns/{columnId}/tasks/{taskId}
+     * @allow (all) Based on the denormalized 'ownerId' and 'memberIds' on the Task document.
+     * @deny (read/write) If the user is not a member of the parent board.
+     * @principle Avoids multi-level get() lookups by checking local document fields.
+     */
+    match /boards/{boardId}/columns/{columnId}/tasks/{taskId} {
+      allow get, list: if isBoardCollaborator(resource.data);
+      allow create: if isBoardCollaborator(request.resource.data);
+      allow update: if isExistingCollaborator(resource.data) && request.resource.data.ownerId == resource.data.ownerId;
+      allow delete: if isExistingCollaborator(resource.data);
+    }
+
+  }
+}

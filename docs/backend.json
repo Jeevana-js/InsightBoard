@@ -1,0 +1,298 @@
+{
+  "entities": {
+    "User": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "User",
+      "type": "object",
+      "description": "Represents a user within the SprintSync Board application, including their role and contact information. Passwords and authentication details are managed by an external system.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the User entity."
+        },
+        "username": {
+          "type": "string",
+          "description": "The user's chosen username for logging in and display."
+        },
+        "email": {
+          "type": "string",
+          "description": "The user's email address, used for communication and potentially login.",
+          "format": "email"
+        },
+        "role": {
+          "type": "string",
+          "description": "The role of the user within the application, determining their permissions (e.g., 'admin' for teachers, 'member' for students).",
+          "format": "enum",
+          "items": {
+            "type": "string"
+          }
+        },
+        "createdAt": {
+          "type": "string",
+          "description": "Timestamp indicating when the user account was created.",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "description": "Timestamp indicating when the user account was last updated.",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "id",
+        "username",
+        "email",
+        "role",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "Board": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Board",
+      "type": "object",
+      "description": "Represents a Kanban board where tasks are organized and tracked.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the Board entity."
+        },
+        "title": {
+          "type": "string",
+          "description": "The title of the Kanban board."
+        },
+        "description": {
+          "type": "string",
+          "description": "An optional detailed description of the board's purpose or project."
+        },
+        "ownerId": {
+          "type": "string",
+          "description": "Reference to the User who created and owns this board. (Relationship: User 1:N Board)"
+        },
+        "memberIds": {
+          "type": "array",
+          "description": "References to Users who are members of this board and can access/contribute to it. (Relationship: User N:N Board)",
+          "items": {
+            "type": "string"
+          }
+        },
+        "createdAt": {
+          "type": "string",
+          "description": "Timestamp indicating when the board was created.",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "description": "Timestamp indicating when the board was last updated.",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "id",
+        "title",
+        "ownerId",
+        "memberIds",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "Column": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Column",
+      "type": "object",
+      "description": "Represents a column (or status stage) within a Kanban board, such as 'New', 'In Progress', or 'Done'.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the Column entity."
+        },
+        "boardId": {
+          "type": "string",
+          "description": "Reference to the Board this column belongs to. (Relationship: Board 1:N Column)"
+        },
+        "title": {
+          "type": "string",
+          "description": "The title of the column (e.g., 'To Do', 'In Development', 'Resolved')."
+        },
+        "order": {
+          "type": "number",
+          "description": "The display order of the column within its board, allowing for custom arrangement."
+        },
+        "createdAt": {
+          "type": "string",
+          "description": "Timestamp indicating when the column was created.",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "description": "Timestamp indicating when the column was last updated.",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "id",
+        "boardId",
+        "title",
+        "order",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "Task": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Task",
+      "type": "object",
+      "description": "Represents a single task or work item on a Kanban board, including its details, assignee, and current status (determined by its column).",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the Task entity."
+        },
+        "columnId": {
+          "type": "string",
+          "description": "Reference to the Column this task is currently placed in, indicating its current status. (Relationship: Column 1:N Task)"
+        },
+        "boardId": {
+          "type": "string",
+          "description": "Reference to the Board this task belongs to, for direct board-level filtering. (Relationship: Board 1:N Task, derived from Column)"
+        },
+        "title": {
+          "type": "string",
+          "description": "A concise title for the task."
+        },
+        "description": {
+          "type": "string",
+          "description": "A detailed description of the task, potentially generated or enhanced by AI."
+        },
+        "assigneeId": {
+          "type": "string",
+          "description": "Optional reference to the User assigned to this task. (Relationship: User 1:N Task)"
+        },
+        "dueDate": {
+          "type": "string",
+          "description": "Optional date and time when the task is due.",
+          "format": "date-time"
+        },
+        "subtasks": {
+          "type": "array",
+          "description": "An array of sub-tasks or action items associated with the main task, potentially AI-suggested.",
+          "items": {
+            "type": "string"
+          }
+        },
+        "acceptanceCriteria": {
+          "type": "array",
+          "description": "An array of criteria that must be met for the task to be considered complete, potentially AI-generated.",
+          "items": {
+            "type": "string"
+          }
+        },
+        "createdAt": {
+          "type": "string",
+          "description": "Timestamp indicating when the task was created.",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "description": "Timestamp indicating when the task was last updated.",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "id",
+        "columnId",
+        "boardId",
+        "title",
+        "createdAt",
+        "updatedAt"
+      ]
+    }
+  },
+  "auth": {
+    "providers": [
+      "password",
+      "anonymous"
+    ]
+  },
+  "firestore": {
+    "structure": [
+      {
+        "path": "/users/{userId}",
+        "definition": {
+          "entityName": "User",
+          "schema": {
+            "$ref": "#/backend/entities/User"
+          },
+          "description": "Stores user profile information, including their global role ('admin' for teachers, 'member' for students). Path-based ownership, accessible by the user themselves or by admins for listing.",
+          "params": [
+            {
+              "name": "userId",
+              "description": "The unique identifier of the user, corresponding to Firebase Authentication UID."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/boards/{boardId}",
+        "definition": {
+          "entityName": "Board",
+          "schema": {
+            "$ref": "#/backend/entities/Board"
+          },
+          "description": "Represents a Kanban board. Includes 'ownerId' and 'memberIds' map for direct authorization checks, supporting collaborative access. These fields are denormalized into subcollections for authorization independence.",
+          "params": [
+            {
+              "name": "boardId",
+              "description": "The unique identifier of the Kanban board."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/boards/{boardId}/columns/{columnId}",
+        "definition": {
+          "entityName": "Column",
+          "schema": {
+            "$ref": "#/backend/entities/Column"
+          },
+          "description": "Represents a column within a board. Includes denormalized 'ownerId' and 'memberIds' (copied from the parent Board) for authorization independence.",
+          "params": [
+            {
+              "name": "boardId",
+              "description": "The unique identifier of the parent board."
+            },
+            {
+              "name": "columnId",
+              "description": "The unique identifier of the column."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/boards/{boardId}/columns/{columnId}/tasks/{taskId}",
+        "definition": {
+          "entityName": "Task",
+          "schema": {
+            "$ref": "#/backend/entities/Task"
+          },
+          "description": "Represents a task within a column. Includes denormalized 'ownerId' and 'memberIds' (copied from the grandparent Board) for authorization independence.",
+          "params": [
+            {
+              "name": "boardId",
+              "description": "The unique identifier of the grandparent board."
+            },
+            {
+              "name": "columnId",
+              "description": "The unique identifier of the parent column."
+            },
+            {
+              "name": "taskId",
+              "description": "The unique identifier of the task."
+            }
+          ]
+        }
+      }
+    ],
+    "reasoning": "The Firestore structure prioritizes Authorization Independence and Query-Accurate Permissions (QAPs) by strategically denormalizing authorization context into subcollection documents. User roles are managed directly within the `/users/{userId}` documents, making global role checks simple and efficient using `get(/users/$(request.auth.uid)).data.role`. This adheres to the DBAC principle.\n\nFor collaborative entities like 'Board', the `ownerId` and `memberIds` are stored directly on the `/boards/{boardId}` document. This allows for straightforward security rules where `request.auth.uid` must be either the `ownerId` or included in the `memberIds` array. To extend this authorization to nested entities (`Column` and `Task`) without resorting to expensive `get()` calls on parent documents, the `ownerId` and `memberIds` from the `Board` are **denormalized** into every `Column` and `Task` document. This is critical for maintaining authorization independence across the hierarchy, simplifying rules, and enabling atomic operations (e.g., creating a board with its initial columns in a single batch).\n\n**Authorization Independence:**\n- Global roles ('admin'/'member') are checked by reading the `role` field on the current user's `/users/{request.auth.uid}` document. This is a direct, self-contained check.\n- For `Columns` and `Tasks`, their documents contain copies of `ownerId` and `memberIds` from their respective parent `Board`. This means a security rule on `/boards/{boardId}/columns/{columnId}` can directly evaluate `request.auth.uid == resource.data.ownerId || request.auth.uid in resource.data.memberIds` without needing to fetch the parent `Board` document. The same applies to `Tasks` which denormalize from their grandparent `Board`.\n\n**Query-Accurate Permissions (QAPs):**\n- For `/users/{userId}`: An 'admin' user (teacher) can perform `list` operations, allowing them to view all user profiles for their 'all members board'. Regular 'member' users (students) can only `read` their own profile. The rules will enforce this. Applications must use `where()` clauses for specific user queries (e.g., `where('role', '==', 'student')`).\n- For `/boards/{boardId}`: Users can only `list` boards where they are either the `ownerId` or one of the `memberIds`. The application must always filter its queries (e.g., `boards.where('ownerId', '==', request.auth.uid).get()` or `boards.where('memberIds', 'array-contains', request.auth.uid).get()`). The security rules ensure that *every* document returned by such a query satisfies the `ownerId` or `memberIds` condition, preventing data leakage if a malicious query attempts to bypass client-side filtering.\n- For `/boards/{boardId}/columns/{columnId}` and `/boards/{boardId}/columns/{columnId}/tasks/{taskId}`: Similar to boards, `list` operations on these subcollections are implicitly guarded by the denormalized `ownerId` and `memberIds`. Any `list` query must match these fields, and the security rules will verify each returned document against `request.auth.uid` for these denormalized fields, ensuring only authorized columns/tasks are returned."
+  }
+}
