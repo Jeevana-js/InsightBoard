@@ -123,7 +123,12 @@ export function TaskDialog({
   }
 
   const generateRollId = () => {
-    return userRollNumber || "225001";
+    const baseId = userRollNumber || "225001";
+    // Check how many tasks this user already has to create a sequential ID
+    // Filtering by prefix ensures we count tasks starting with this roll number
+    const userTasksCount = tasks.filter(t => t.id.startsWith(baseId)).length;
+    const nextNum = userTasksCount + 1;
+    return `${baseId}-${nextNum.toString().padStart(2, '0')}`;
   }
 
   const onSubmit = (values: z.infer<typeof taskSchema>) => {
@@ -138,7 +143,7 @@ export function TaskDialog({
       dueDate: values.dueDate ? new Date(values.dueDate).toISOString() : undefined,
       createdAt: task?.createdAt || new Date().toISOString(),
       teacherComment: values.teacherComment || "",
-      creatorId: task?.creatorId || user.uid, // Explicitly track creator for privacy rules
+      creatorId: task?.creatorId || user.uid,
     }
     onSave(newTask)
     onOpenChange(false)
@@ -333,5 +338,3 @@ export function TaskDialog({
     </Dialog>
   )
 }
-
-    
