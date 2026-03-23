@@ -94,7 +94,7 @@ export function KanbanBoard({ userRole, username }: KanbanBoardProps) {
     findBoard()
   }, [user, isAdmin, db])
 
-  // 2. Fetch Board Data for denormalization
+  // 2. Fetch Board Data for denormalization and real-time membership tracking
   React.useEffect(() => {
     if (!activeBoardId) return
     const unsub = onSnapshot(doc(db, "boards", activeBoardId), (snap) => {
@@ -117,8 +117,6 @@ export function KanbanBoard({ userRole, username }: KanbanBoardProps) {
       // Query-Accurate Permissions (QAP):
       // We must use a filter that the security rules can verify for the 'list' operation.
       // Important: Check if we are the OWNER of the board vs a Member.
-      // A promoted Admin (who is still a Member of the board) must still query as a Member 
-      // because they are not the 'ownerId' on the documents.
       const isActualOwner = user.uid === activeBoardId;
       
       const q = isActualOwner 
@@ -149,40 +147,40 @@ export function KanbanBoard({ userRole, username }: KanbanBoardProps) {
     return () => unsubscribes.forEach(unsub => unsub())
   }, [activeBoardId, columns, db, user])
 
-  // 4. Fetch workspace members for filtering (Anyone who has access can see who else is here)
+  // 4. Fetch workspace members reactively whenever boardData (membership list) changes
   React.useEffect(() => {
+    if (!boardData || !db) return
+    
     const loadMembers = async () => {
-      if (!activeBoardId) return
-      
       try {
-        const boardRef = doc(db, "boards", activeBoardId)
-        const boardSnap = await getDoc(boardRef)
+        const allMemberIds = Array.from(new Set([boardData.ownerId, ...(boardData.memberIds || [])]))
+        const membersList: WorkspaceMember[] = []
         
-        if (boardSnap.exists()) {
-          const bData = boardSnap.data()
-          const allMemberIds = Array.from(new Set([bData.ownerId, ...(bData.memberIds || [])]))
-          const membersList: WorkspaceMember[] = []
-          
-          for (const mId of allMemberIds) {
-            const uDoc = await getDoc(doc(db, "users", mId))
-            if (uDoc.exists()) {
-              const uData = uDoc.data()
-              membersList.push({
-                id: uData.id,
-                name: uData.username || "User",
-                role: uData.role || "member"
-              })
-            }
+        for (const mId of allMemberIds) {
+          const uDoc = await getDoc(doc(db, "users", mId))
+          if (uDoc.exists()) {
+            const uData = uDoc.data()
+            membersList.push({
+              id: uData.id,
+              name: uData.username || "User",
+              role: uData.role || "member"
+            })
           }
-          setWorkspaceMembers(membersList)
         }
+        setWorkspaceMembers(membersList)
+        
+        // Safety: If current assignee filter is for someone no longer in the list, reset it
+        setAssigneeFilter(prev => {
+          if (prev === "all") return prev
+          return membersList.some(m => m.name === prev) ? prev : "all"
+        })
       } catch (err) {
         // Silently skip if members list fails to load
       }
     }
 
     loadMembers()
-  }, [activeBoardId, db])
+  }, [boardData, db])
 
   const copyInviteCode = () => {
     navigator.clipboard.writeText(roomInviteCode)
