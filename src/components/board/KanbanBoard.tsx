@@ -1,8 +1,8 @@
-
 "use client"
 
 import * as React from "react"
-import { Search, Plus, LayoutGrid, List, SlidersHorizontal, User, RotateCcw } from "lucide-react"
+import Link from "next/link"
+import { Search, Plus, LayoutGrid, List, SlidersHorizontal, User } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { 
@@ -12,15 +12,6 @@ import {
   SelectTrigger, 
   SelectValue 
 } from "@/components/ui/select"
-import {
-  Sheet,
-  SheetContent,
-  SheetDescription,
-  SheetHeader,
-  SheetTitle,
-  SheetFooter,
-} from "@/components/ui/sheet"
-import { Label } from "@/components/ui/label"
 import { KanbanColumn } from "./KanbanColumn"
 import { TaskListView } from "./TaskListView"
 import { TaskDialog } from "@/components/task/TaskDialog"
@@ -35,7 +26,7 @@ const INITIAL_TASKS: Task[] = [
     description: "Initial research phase for the SprintSync platform including tech stack evaluation.",
     status: "Resolved",
     assignee: "Alex Rivera",
-    dueDate: "2024-05-20T00:00:00Z",
+    dueDate: "2024-05-20",
     acceptanceCriteria: ["Tech stack finalized", "System diagram approved"],
     subTasks: ["Research Genkit", "Define API schema"],
     createdAt: new Date().toISOString()
@@ -46,7 +37,7 @@ const INITIAL_TASKS: Task[] = [
     description: "Create the responsive grid layout for the board columns and task cards.",
     status: "In Development",
     assignee: "Jordan Smith",
-    dueDate: "2024-06-15T00:00:00Z",
+    dueDate: "2024-06-15",
     acceptanceCriteria: ["Drag and drop works", "Responsive layout"],
     subTasks: ["Column component", "Card component"],
     createdAt: new Date().toISOString()
@@ -57,7 +48,7 @@ const INITIAL_TASKS: Task[] = [
     description: "Integrate Gemini models to help users flesh out thin task descriptions.",
     status: "New",
     assignee: "Taylor Chen",
-    dueDate: "2024-07-01T00:00:00Z",
+    dueDate: "2024-07-01",
     acceptanceCriteria: ["Prompt engineering done", "UI button integrated"],
     subTasks: ["Write Genkit flows", "Add loading states"],
     createdAt: new Date().toISOString()
@@ -68,12 +59,11 @@ type ViewMode = 'board' | 'list';
 
 export function KanbanBoard() {
   const [tasks, setTasks] = React.useState<Task[]>([])
-  const [boardName, setBoardName] = React.useState("SprintSync Board")
+  const [boardName] = React.useState("SprintSync Board")
   const [searchQuery, setSearchQuery] = React.useState("")
   const [assigneeFilter, setAssigneeFilter] = React.useState("all")
   const [viewMode, setViewMode] = React.useState<ViewMode>('board')
   const [isTaskDialogOpen, setIsTaskDialogOpen] = React.useState(false)
-  const [isSettingsOpen, setIsSettingsOpen] = React.useState(false)
   const [selectedTask, setSelectedTask] = React.useState<Task | undefined>()
   const [activeStatus, setActiveStatus] = React.useState<TaskStatus | undefined>()
   const { toast } = useToast()
@@ -122,15 +112,6 @@ export function KanbanBoard() {
     })
   }
 
-  const handleResetBoard = () => {
-    setTasks(INITIAL_TASKS)
-    toast({
-      title: "Board Reset",
-      description: "The board has been restored to its initial state.",
-    })
-    setIsSettingsOpen(false)
-  }
-
   return (
     <div className="flex flex-col h-screen overflow-hidden bg-background">
       {/* Top Header/Toolbar */}
@@ -147,10 +128,12 @@ export function KanbanBoard() {
                variant="outline" 
                size="sm" 
                className="hidden sm:flex"
-               onClick={() => setIsSettingsOpen(true)}
+               asChild
              >
-              <SlidersHorizontal className="h-4 w-4 mr-2" />
-              Settings
+              <Link href="/settings">
+                <SlidersHorizontal className="h-4 w-4 mr-2" />
+                Settings
+              </Link>
             </Button>
             <Button onClick={() => handleAddTask('New')} className="bg-accent hover:bg-accent/90">
               <Plus className="h-4 w-4 mr-2" />
@@ -213,7 +196,7 @@ export function KanbanBoard() {
       </header>
 
       {/* Main Content Area */}
-      <main className="flex-1 overflow-auto p-6 scrollbar-thin scrollbar-thumb-muted-foreground/20 hover:scrollbar-thumb-muted-foreground/40">
+      <main className="flex-1 overflow-auto p-6">
         {viewMode === 'board' ? (
           <div className="flex gap-6 h-full min-w-max">
             {COLUMNS.map((status) => (
@@ -233,58 +216,6 @@ export function KanbanBoard() {
           </div>
         )}
       </main>
-
-      {/* Settings Sheet */}
-      <Sheet open={isSettingsOpen} onOpenChange={setIsSettingsOpen}>
-        <SheetContent>
-          <SheetHeader>
-            <SheetTitle>Board Settings</SheetTitle>
-            <SheetDescription>
-              Manage your workspace and board configuration.
-            </SheetDescription>
-          </SheetHeader>
-          <div className="py-6 space-y-6">
-            <div className="space-y-2">
-              <Label htmlFor="board-name">Board Name</Label>
-              <Input 
-                id="board-name" 
-                value={boardName} 
-                onChange={(e) => setBoardName(e.target.value)}
-                placeholder="Enter board name..."
-              />
-            </div>
-            
-            <div className="pt-4 border-t">
-              <h3 className="text-sm font-semibold mb-3">Statistics</h3>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="bg-muted/50 p-3 rounded-lg">
-                  <p className="text-xs text-muted-foreground mb-1">Total Tasks</p>
-                  <p className="text-xl font-bold">{tasks.length}</p>
-                </div>
-                <div className="bg-muted/50 p-3 rounded-lg">
-                  <p className="text-xs text-muted-foreground mb-1">Filtered</p>
-                  <p className="text-xl font-bold">{filteredTasks.length}</p>
-                </div>
-              </div>
-            </div>
-
-            <div className="pt-4 border-t">
-              <h3 className="text-sm font-semibold text-destructive mb-3">Danger Zone</h3>
-              <Button 
-                variant="destructive" 
-                className="w-full justify-start"
-                onClick={handleResetBoard}
-              >
-                <RotateCcw className="h-4 w-4 mr-2" />
-                Reset to Default Tasks
-              </Button>
-            </div>
-          </div>
-          <SheetFooter>
-            <Button className="w-full" onClick={() => setIsSettingsOpen(false)}>Close</Button>
-          </SheetFooter>
-        </SheetContent>
-      </Sheet>
 
       <TaskDialog 
         open={isTaskDialogOpen} 
