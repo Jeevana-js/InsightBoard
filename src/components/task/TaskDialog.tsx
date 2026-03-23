@@ -127,8 +127,8 @@ export function TaskDialog({ task, open, onOpenChange, onSave, defaultStatus }: 
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
+      <DialogContent className="max-w-2xl max-h-[90vh] flex flex-col p-0 overflow-hidden">
+        <DialogHeader className="p-6 pb-2">
           <DialogTitle className="flex items-center gap-2">
             {task ? "Edit Task" : "Create New Task"}
             <span className="text-xs font-normal text-muted-foreground ml-2">ID: {task?.id || 'NEW'}</span>
@@ -136,208 +136,212 @@ export function TaskDialog({ task, open, onOpenChange, onSave, defaultStatus }: 
         </DialogHeader>
 
         <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6 py-4">
-            <div className="grid grid-cols-2 gap-4">
-              <FormField
-                control={form.control}
-                name="title"
-                render={({ field }) => (
-                  <FormItem className="col-span-2">
-                    <FormLabel>Title</FormLabel>
-                    <div className="flex gap-2">
-                      <FormControl>
-                        <Input placeholder="e.g. Implement OAuth2 Login" {...field} />
-                      </FormControl>
-                      <Button 
-                        type="button" 
-                        variant="secondary" 
-                        className="shrink-0 font-headline"
-                        onClick={handleAiGenerate}
-                        disabled={isAiGenerating}
-                      >
-                        {isAiGenerating ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Sparkles className="mr-2 h-4 w-4 text-accent" />}
-                        Magic Build
-                      </Button>
-                    </div>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <FormField
-                control={form.control}
-                name="status"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Status</FormLabel>
-                    <Select onValueChange={field.onChange} defaultValue={field.value}>
-                      <FormControl>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select status" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        {COLUMNS.map((status) => (
-                          <SelectItem key={status} value={status}>{status}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <FormField
-                control={form.control}
-                name="assignee"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Assignee</FormLabel>
-                    <Select onValueChange={field.onChange} defaultValue={field.value}>
-                      <FormControl>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Unassigned" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        {TEAM_MEMBERS.map((member) => (
-                          <SelectItem key={member} value={member}>{member}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <FormField
-                control={form.control}
-                name="dueDate"
-                render={({ field }) => (
-                  <FormItem className="flex flex-col">
-                    <FormLabel>Due Date</FormLabel>
-                    <Popover>
-                      <PopoverTrigger asChild>
+          <form onSubmit={form.handleSubmit(onSubmit)} className="flex-1 overflow-y-auto px-6 py-2">
+            <div className="space-y-6 pb-6">
+              <div className="grid grid-cols-2 gap-4">
+                <FormField
+                  control={form.control}
+                  name="title"
+                  render={({ field }) => (
+                    <FormItem className="col-span-2">
+                      <FormLabel>Title</FormLabel>
+                      <div className="flex gap-2">
                         <FormControl>
-                          <Button
-                            variant={"outline"}
-                            className={cn(
-                              "w-full pl-3 text-left font-normal",
-                              !field.value && "text-muted-foreground"
-                            )}
-                          >
-                            {field.value ? format(field.value, "PPP") : <span>Pick a date</span>}
-                            <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                          </Button>
+                          <Input placeholder="e.g. Implement OAuth2 Login" {...field} />
                         </FormControl>
-                      </PopoverTrigger>
-                      <PopoverContent className="w-auto p-0" align="start">
-                        <Calendar
-                          mode="single"
-                          selected={field.value}
-                          onSelect={field.onChange}
-                          disabled={(date) => date < new Date("1900-01-01")}
-                          initialFocus
-                        />
-                      </PopoverContent>
-                    </Popover>
+                        <Button 
+                          type="button" 
+                          variant="secondary" 
+                          className="shrink-0 font-headline"
+                          onClick={handleAiGenerate}
+                          disabled={isAiGenerating}
+                        >
+                          {isAiGenerating ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Sparkles className="mr-2 h-4 w-4 text-accent" />}
+                          Magic Build
+                        </Button>
+                      </div>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="status"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Status</FormLabel>
+                      <Select onValueChange={field.onChange} defaultValue={field.value}>
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select status" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          {COLUMNS.map((status) => (
+                            <SelectItem key={status} value={status}>{status}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="assignee"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Assignee</FormLabel>
+                      <Select onValueChange={field.onChange} defaultValue={field.value}>
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Unassigned" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          {TEAM_MEMBERS.map((member) => (
+                            <SelectItem key={member} value={member}>{member}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="dueDate"
+                  render={({ field }) => (
+                    <FormItem className="flex flex-col">
+                      <FormLabel>Due Date</FormLabel>
+                      <Popover>
+                        <PopoverTrigger asChild>
+                          <FormControl>
+                            <Button
+                              variant={"outline"}
+                              className={cn(
+                                "w-full pl-3 text-left font-normal",
+                                !field.value && "text-muted-foreground"
+                              )}
+                            >
+                              {field.value ? format(field.value, "PPP") : <span>Pick a date</span>}
+                              <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                            </Button>
+                          </FormControl>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-auto p-0" align="start">
+                          <Calendar
+                            mode="single"
+                            selected={field.value}
+                            onSelect={field.onChange}
+                            disabled={(date) => date < new Date("1900-01-01")}
+                            initialFocus
+                          />
+                        </PopoverContent>
+                      </Popover>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+
+              <FormField
+                control={form.control}
+                name="description"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Detailed Description</FormLabel>
+                    <FormControl>
+                      <Textarea 
+                        placeholder="What needs to be done?" 
+                        className="min-h-[120px] resize-none" 
+                        {...field} 
+                      />
+                    </FormControl>
                     <FormMessage />
                   </FormItem>
                 )}
               />
-            </div>
 
-            <FormField
-              control={form.control}
-              name="description"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Detailed Description</FormLabel>
-                  <FormControl>
-                    <Textarea 
-                      placeholder="What needs to be done?" 
-                      className="min-h-[120px] resize-none" 
-                      {...field} 
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+              <div className="space-y-4">
+                <div>
+                  <div className="flex justify-between items-center mb-2">
+                    <h3 className="text-sm font-semibold">Acceptance Criteria</h3>
+                    <Button type="button" variant="ghost" size="sm" onClick={() => setAcceptanceCriteria([...acceptanceCriteria, ""])}>
+                      <Plus className="h-4 w-4 mr-1" /> Add
+                    </Button>
+                  </div>
+                  <div className="space-y-2">
+                    {acceptanceCriteria.map((item, index) => (
+                      <div key={index} className="flex gap-2">
+                        <Input 
+                          value={item} 
+                          onChange={(e) => {
+                            const newCriteria = [...acceptanceCriteria]
+                            newCriteria[index] = e.target.value
+                            setAcceptanceCriteria(newCriteria)
+                          }}
+                          className="text-sm"
+                          placeholder="Criteria statement..."
+                        />
+                        <Button 
+                          type="button" 
+                          variant="ghost" 
+                          size="icon" 
+                          onClick={() => setAcceptanceCriteria(acceptanceCriteria.filter((_, i) => i !== index))}
+                        >
+                          <Trash2 className="h-4 w-4 text-destructive" />
+                        </Button>
+                      </div>
+                    ))}
+                    {acceptanceCriteria.length === 0 && <p className="text-xs text-muted-foreground italic">No criteria defined.</p>}
+                  </div>
+                </div>
 
-            <div className="space-y-4">
-              <div>
-                <div className="flex justify-between items-center mb-2">
-                  <h3 className="text-sm font-semibold">Acceptance Criteria</h3>
-                  <Button type="button" variant="ghost" size="sm" onClick={() => setAcceptanceCriteria([...acceptanceCriteria, ""])}>
-                    <Plus className="h-4 w-4 mr-1" /> Add
-                  </Button>
-                </div>
-                <div className="space-y-2">
-                  {acceptanceCriteria.map((item, index) => (
-                    <div key={index} className="flex gap-2">
-                      <Input 
-                        value={item} 
-                        onChange={(e) => {
-                          const newCriteria = [...acceptanceCriteria]
-                          newCriteria[index] = e.target.value
-                          setAcceptanceCriteria(newCriteria)
-                        }}
-                        className="text-sm"
-                        placeholder="Criteria statement..."
-                      />
-                      <Button 
-                        type="button" 
-                        variant="ghost" 
-                        size="icon" 
-                        onClick={() => setAcceptanceCriteria(acceptanceCriteria.filter((_, i) => i !== index))}
-                      >
-                        <Trash2 className="h-4 w-4 text-destructive" />
-                      </Button>
-                    </div>
-                  ))}
-                  {acceptanceCriteria.length === 0 && <p className="text-xs text-muted-foreground italic">No criteria defined.</p>}
-                </div>
-              </div>
-
-              <div>
-                <div className="flex justify-between items-center mb-2">
-                  <h3 className="text-sm font-semibold">Sub-Tasks</h3>
-                  <Button type="button" variant="ghost" size="sm" onClick={() => setSubTasks([...subTasks, ""])}>
-                    <Plus className="h-4 w-4 mr-1" /> Add
-                  </Button>
-                </div>
-                <div className="space-y-2">
-                  {subTasks.map((item, index) => (
-                    <div key={index} className="flex gap-2">
-                      <Input 
-                        value={item} 
-                        onChange={(e) => {
-                          const newSub = [...subTasks]
-                          newSub[index] = e.target.value
-                          setSubTasks(newSub)
-                        }}
-                        className="text-sm"
-                        placeholder="Subtask description..."
-                      />
-                      <Button 
-                        type="button" 
-                        variant="ghost" 
-                        size="icon" 
-                        onClick={() => setSubTasks(subTasks.filter((_, i) => i !== index))}
-                      >
-                        <Trash2 className="h-4 w-4 text-destructive" />
-                      </Button>
-                    </div>
-                  ))}
-                  {subTasks.length === 0 && <p className="text-xs text-muted-foreground italic">No sub-tasks defined.</p>}
+                <div>
+                  <div className="flex justify-between items-center mb-2">
+                    <h3 className="text-sm font-semibold">Sub-Tasks</h3>
+                    <Button type="button" variant="ghost" size="sm" onClick={() => setSubTasks([...subTasks, ""])}>
+                      <Plus className="h-4 w-4 mr-1" /> Add
+                    </Button>
+                  </div>
+                  <div className="space-y-2">
+                    {subTasks.map((item, index) => (
+                      <div key={index} className="flex gap-2">
+                        <Input 
+                          value={item} 
+                          onChange={(e) => {
+                            const newSub = [...subTasks]
+                            newSub[index] = e.target.value
+                            setSubTasks(newSub)
+                          }}
+                          className="text-sm"
+                          placeholder="Subtask description..."
+                        />
+                        <Button 
+                          type="button" 
+                          variant="ghost" 
+                          size="icon" 
+                          onClick={() => setSubTasks(subTasks.filter((_, i) => i !== index))}
+                        >
+                          <Trash2 className="h-4 w-4 text-destructive" />
+                        </Button>
+                      </div>
+                    ))}
+                    {subTasks.length === 0 && <p className="text-xs text-muted-foreground italic">No sub-tasks defined.</p>}
+                  </div>
                 </div>
               </div>
             </div>
-
-            <DialogFooter className="pt-4 sticky bottom-0 bg-background">
-              <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
-              <Button type="submit">{task ? "Update Task" : "Create Task"}</Button>
+            
+            <DialogFooter className="sticky bottom-0 z-10 -mx-6 mt-auto p-6 border-t bg-background/80 backdrop-blur-md">
+              <div className="flex justify-end gap-3 w-full">
+                <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
+                <Button type="submit">{task ? "Update Task" : "Create Task"}</Button>
+              </div>
             </DialogFooter>
           </form>
         </Form>
