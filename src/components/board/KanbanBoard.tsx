@@ -497,24 +497,26 @@ export function KanbanBoard({ userRole, username, rollNumber }: KanbanBoardProps
             />
           </div>
 
-          <div className="w-[200px]">
-            <Select value={assigneeFilter} onValueChange={setAssigneeFilter}>
-              <SelectTrigger className="h-10 bg-white shadow-sm border-muted">
-                <div className="flex items-center gap-2">
-                  <Users className="h-4 w-4 text-muted-foreground" />
-                  <SelectValue placeholder="Filter by Member" />
-                </div>
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Members</SelectItem>
-                {workspaceMembers.map(member => (
-                  <SelectItem key={member.id} value={member.name}>
-                    {member.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
+          {isAdmin && (
+            <div className="w-[200px]">
+              <Select value={assigneeFilter} onValueChange={setAssigneeFilter}>
+                <SelectTrigger className="h-10 bg-white shadow-sm border-muted">
+                  <div className="flex items-center gap-2">
+                    <Users className="h-4 w-4 text-muted-foreground" />
+                    <SelectValue placeholder="Filter by Member" />
+                  </div>
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Members</SelectItem>
+                  {workspaceMembers.map(member => (
+                    <SelectItem key={member.id} value={member.name}>
+                      {member.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
           
           <div className="flex bg-muted/30 p-1 rounded-md ml-auto border shadow-sm h-10 items-center">
             <Button 
