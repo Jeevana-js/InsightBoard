@@ -1,3 +1,4 @@
+
 "use client"
 
 import * as React from "react"
@@ -47,6 +48,8 @@ export default function SettingsPage() {
   }, [user, db])
 
   const { data: profile, isLoading: isProfileLoading } = useDoc(profileRef)
+
+  const isAdmin = profile?.role === 'admin'
 
   // Fetch all board members
   React.useEffect(() => {
@@ -193,8 +196,6 @@ export default function SettingsPage() {
       description: "The user no longer has access to this board.",
     })
   }
-
-  const isAdmin = profile?.role === 'admin'
 
   return (
     <div className="min-h-screen bg-background flex flex-col">
@@ -372,9 +373,14 @@ export default function SettingsPage() {
                             {members.map((member) => (
                               <TableRow key={member.id}>
                                 <TableCell>
-                                  <div>
-                                    <p className="font-medium text-slate-900">{member.name}</p>
-                                    <p className="text-xs text-muted-foreground">{member.email}</p>
+                                  <div className="flex items-center gap-2">
+                                    <div>
+                                      <p className="font-medium text-slate-900">{member.name}</p>
+                                      <p className="text-xs text-muted-foreground">{member.email}</p>
+                                    </div>
+                                    {member.role === 'Admin' && (
+                                      <Badge variant="outline" className="text-[9px] h-4 px-1 uppercase tracking-tighter opacity-70">Admin</Badge>
+                                    )}
                                   </div>
                                 </TableCell>
                                 <TableCell>
