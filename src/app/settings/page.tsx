@@ -28,13 +28,14 @@ import { Badge } from "@/components/ui/badge"
 import { useToast } from "@/hooks/use-toast"
 import { Member } from "@/types/task"
 import { useUser, useFirestore, useDoc, useMemoFirebase } from "@/firebase"
-import { doc, updateDoc, arrayUnion, getDoc } from "firebase/firestore"
+import { doc, updateDoc, arrayUnion, getDoc, collection, query, where, getDocs } from "firebase/firestore"
 
 export default function SettingsPage() {
   const [members, setMembers] = React.useState<Member[]>([])
   const [hasCopied, setHasCopied] = React.useState(false)
   const [joinCode, setJoinCode] = React.useState("")
   const [isJoining, setIsJoining] = React.useState(false)
+  const [isMembersLoading, setIsMembersLoading] = React.useState(true)
   
   const { user } = useUser()
   const db = useFirestore()
@@ -47,18 +48,67 @@ export default function SettingsPage() {
 
   const { data: profile, isLoading: isProfileLoading } = useDoc(profileRef)
 
+  // Fetch all board members
   React.useEffect(() => {
-    if (profile) {
-      const currentUserMember: Member = {
-        id: profile.id,
-        name: profile.username || user?.displayName || "User",
-        email: profile.email || user?.email || "",
-        role: profile.role === 'admin' ? 'Admin' : 'Member',
-        status: 'Active'
+    const loadBoardAndMembers = async () => {
+      if (!user || !profile) return;
+      
+      setIsMembersLoading(true)
+      try {
+        let targetBoardId = user.uid; // Default for teachers
+        
+        if (profile.role !== 'admin') {
+          // Find board the student joined
+          const q = query(collection(db, "boards"), where("memberIds", "array-contains", user.uid));
+          const qSnap = await getDocs(q);
+          if (!qSnap.empty) {
+            targetBoardId = qSnap.docs[0].id;
+          } else {
+            // Student hasn't joined any board yet, just show them
+            setMembers([{
+              id: profile.id,
+              name: profile.username || user?.displayName || "User",
+              email: profile.email || user?.email || "",
+              role: profile.role === 'admin' ? 'Admin' : 'Member',
+              status: 'Active'
+            }])
+            setIsMembersLoading(false)
+            return;
+          }
+        }
+
+        const boardRef = doc(db, "boards", targetBoardId);
+        const boardSnap = await getDoc(boardRef);
+        
+        if (boardSnap.exists()) {
+          const bData = boardSnap.data();
+          const allMemberIds = Array.from(new Set([bData.ownerId, ...(bData.memberIds || [])]));
+          const memberProfiles: Member[] = [];
+          
+          for (const mId of allMemberIds) {
+            const uDoc = await getDoc(doc(db, "users", mId));
+            if (uDoc.exists()) {
+              const uData = uDoc.data();
+              memberProfiles.push({
+                id: uData.id,
+                name: uData.username || "User",
+                email: uData.email || "",
+                role: uData.role === 'admin' ? 'Admin' : 'Member',
+                status: 'Active'
+              });
+            }
+          }
+          setMembers(memberProfiles);
+        }
+      } catch (err) {
+        console.error("Failed to load members", err)
+      } finally {
+        setIsMembersLoading(false)
       }
-      setMembers([currentUserMember])
-    }
-  }, [profile, user])
+    };
+
+    loadBoardAndMembers();
+  }, [user, profile, db]);
 
   const roomInviteCode = user?.uid || ""
 
@@ -107,6 +157,7 @@ export default function SettingsPage() {
         description: "You have successfully joined the teacher's board.",
       })
       setJoinCode("")
+      window.location.reload(); // Refresh to update member list
     } catch (error: any) {
       toast({
         variant: "destructive",
@@ -303,7 +354,7 @@ export default function SettingsPage() {
                       </CardDescription>
                     </CardHeader>
                     <CardContent>
-                      {isProfileLoading ? (
+                      {isMembersLoading ? (
                         <div className="flex items-center justify-center p-12">
                           <Loader2 className="h-8 w-8 animate-spin text-primary" />
                         </div>
@@ -322,7 +373,7 @@ export default function SettingsPage() {
                               <TableRow key={member.id}>
                                 <TableCell>
                                   <div>
-                                    <p className="font-medium">{member.name}</p>
+                                    <p className="font-medium text-slate-900">{member.name}</p>
                                     <p className="text-xs text-muted-foreground">{member.email}</p>
                                   </div>
                                 </TableCell>
@@ -358,6 +409,13 @@ export default function SettingsPage() {
                                 </TableCell>
                               </TableRow>
                             ))}
+                            {members.length === 0 && (
+                                <TableRow>
+                                    <TableCell colSpan={4} className="text-center py-8 text-muted-foreground">
+                                        No members found for this workspace.
+                                    </TableCell>
+                                </TableRow>
+                            )}
                           </TableBody>
                         </Table>
                       )}
@@ -376,7 +434,7 @@ export default function SettingsPage() {
                     <CardContent className="pt-6 space-y-6">
                       <div className="flex items-center justify-between">
                         <div>
-                          <p className="text-sm font-semibold">Reset Board State</p>
+                          <p className="text-sm font-semibold text-slate-900">Reset Board State</p>
                           <p className="text-xs text-muted-foreground">Clear all current tasks and restore initial demo content.</p>
                         </div>
                         <Button variant="outline">Reset Board</Button>

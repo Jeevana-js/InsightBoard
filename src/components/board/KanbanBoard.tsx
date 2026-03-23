@@ -3,7 +3,7 @@
 import * as React from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
-import { Search, Plus, LayoutGrid, List, SlidersHorizontal, User as UserIcon, LogOut, ShieldCheck, Share2, Copy, Check, Hash } from "lucide-react"
+import { Search, Plus, LayoutGrid, List, SlidersHorizontal, User as UserIcon, LogOut, ShieldCheck, Share2, Copy, Check, Hash, Loader2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { 
@@ -32,9 +32,10 @@ import { TaskDialog } from "@/components/task/TaskDialog"
 import { Task, TaskStatus, INITIAL_COLUMNS } from "@/types/task"
 import { useToast } from "@/hooks/use-toast"
 import { cn } from "@/lib/utils"
-import { useAuth, useUser } from "@/firebase"
+import { useAuth, useUser, useFirestore } from "@/firebase"
 import { signOut } from "firebase/auth"
 import { Badge } from "@/components/ui/badge"
+import { doc, getDoc, collection, query, where, getDocs } from "firebase/firestore"
 
 export function KanbanBoard({ userRole, username }: KanbanBoardProps) {
   const [tasks, setTasks] = React.useState<Task[]>([])
@@ -46,9 +47,11 @@ export function KanbanBoard({ userRole, username }: KanbanBoardProps) {
   const [selectedTask, setSelectedTask] = React.useState<Task | undefined>()
   const [activeStatus, setActiveStatus] = React.useState<TaskStatus | undefined>()
   const [hasCopied, setHasCopied] = React.useState(false)
+  const [workspaceMembers, setWorkspaceMembers] = React.useState<string[]>([])
   
   const auth = useAuth()
   const { user } = useUser()
+  const db = useFirestore()
   const router = useRouter()
   const { toast } = useToast()
 
@@ -56,6 +59,50 @@ export function KanbanBoard({ userRole, username }: KanbanBoardProps) {
   const boardTitle = isAdmin ? "All Members Board" : "Project reviewer"
   
   const roomInviteCode = user?.uid || ""
+
+  // Fetch workspace members for assignee dropdown
+  React.useEffect(() => {
+    const loadMembers = async () => {
+      if (!user) return;
+      
+      try {
+        let targetBoardId = user.uid; // Default for teachers
+        
+        if (userRole !== 'admin') {
+          // Find board the student joined
+          const q = query(collection(db, "boards"), where("memberIds", "array-contains", user.uid));
+          const qSnap = await getDocs(q);
+          if (!qSnap.empty) {
+            targetBoardId = qSnap.docs[0].id;
+          } else {
+             setWorkspaceMembers([username || user.displayName || "User"])
+             return;
+          }
+        }
+
+        const boardRef = doc(db, "boards", targetBoardId);
+        const boardSnap = await getDoc(boardRef);
+        
+        if (boardSnap.exists()) {
+          const bData = boardSnap.data();
+          const allMemberIds = Array.from(new Set([bData.ownerId, ...(bData.memberIds || [])]));
+          const memberNames: string[] = [];
+          
+          for (const mId of allMemberIds) {
+            const uDoc = await getDoc(doc(db, "users", mId));
+            if (uDoc.exists()) {
+              memberNames.push(uDoc.data().username || "User");
+            }
+          }
+          setWorkspaceMembers(memberNames);
+        }
+      } catch (err) {
+        console.error("Error loading board members", err)
+      }
+    };
+
+    loadMembers();
+  }, [user, userRole, username, db]);
 
   const copyInviteCode = () => {
     navigator.clipboard.writeText(roomInviteCode)
@@ -153,13 +200,6 @@ export function KanbanBoard({ userRole, username }: KanbanBoardProps) {
     }
   }
 
-  const availableAssignees = React.useMemo(() => {
-    const names = new Set<string>()
-    if (username) names.add(username)
-    tasks.forEach(t => { if (t.assignee) names.add(t.assignee) })
-    return Array.from(names)
-  }, [tasks, username])
-
   return (
     <div className="flex flex-col h-screen overflow-hidden bg-background">
       <header className="border-b bg-white px-6 py-4 flex flex-col gap-4 shadow-sm relative z-20">
@@ -199,7 +239,7 @@ export function KanbanBoard({ userRole, username }: KanbanBoardProps) {
                 <PopoverContent className="w-80 p-5 shadow-2xl border-accent/20 bg-white/95 backdrop-blur-sm">
                   <div className="space-y-4">
                     <div className="space-y-1.5">
-                      <h4 className="text-sm font-bold flex items-center gap-2 text-foreground">
+                      <h4 className="text-sm font-bold flex items-center gap-2 text-slate-900">
                         <Hash className="h-4 w-4 text-accent" />
                         Room Invite Code
                       </h4>
@@ -236,7 +276,7 @@ export function KanbanBoard({ userRole, username }: KanbanBoardProps) {
               <DropdownMenuContent align="end" className="w-56">
                 <DropdownMenuLabel>
                   <div className="flex flex-col">
-                    <span className="font-bold">{username || "User"}</span>
+                    <span className="font-bold text-slate-900">{username || "User"}</span>
                     <span className="text-[10px] text-muted-foreground uppercase tracking-wider">{userRole}</span>
                   </div>
                 </DropdownMenuLabel>
@@ -268,22 +308,20 @@ export function KanbanBoard({ userRole, username }: KanbanBoardProps) {
             />
           </div>
           
-          {isAdmin && (
-            <div className="flex items-center gap-2">
-              <UserIcon className="h-4 w-4 text-muted-foreground" />
-              <Select value={assigneeFilter} onValueChange={setAssigneeFilter}>
-                <SelectTrigger className="w-[180px] h-9 bg-muted/30 border-none">
-                  <SelectValue placeholder="All Assignees" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Members</SelectItem>
-                  {availableAssignees.map(m => (
-                    <SelectItem key={m} value={m}>{m}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          )}
+          <div className="flex items-center gap-2">
+            <UserIcon className="h-4 w-4 text-muted-foreground" />
+            <Select value={assigneeFilter} onValueChange={setAssigneeFilter}>
+              <SelectTrigger className="w-[180px] h-9 bg-muted/30 border-none">
+                <SelectValue placeholder="All Assignees" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Members</SelectItem>
+                {workspaceMembers.map(m => (
+                  <SelectItem key={m} value={m}>{m}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
 
           <div className="flex bg-muted/30 p-1 rounded-md ml-auto border shadow-sm">
             <Button 
@@ -345,6 +383,7 @@ export function KanbanBoard({ userRole, username }: KanbanBoardProps) {
         defaultStatus={activeStatus}
         currentUsername={username || undefined}
         columnOptions={columns}
+        memberOptions={workspaceMembers}
       />
     </div>
   )

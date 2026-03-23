@@ -53,6 +53,7 @@ interface TaskDialogProps {
   defaultStatus?: TaskStatus
   currentUsername?: string
   columnOptions?: string[]
+  memberOptions?: string[]
 }
 
 export function TaskDialog({ 
@@ -63,7 +64,8 @@ export function TaskDialog({
   onDelete,
   defaultStatus, 
   currentUsername,
-  columnOptions = INITIAL_COLUMNS
+  columnOptions = INITIAL_COLUMNS,
+  memberOptions = []
 }: TaskDialogProps) {
   const [isAiGenerating, setIsAiGenerating] = React.useState(false)
 
@@ -134,7 +136,7 @@ export function TaskDialog({
         <DialogHeader className="p-6 pb-2">
           <DialogTitle className="flex items-center justify-between">
             <div className="flex items-center gap-2">
-              {task ? "Edit Task" : "Create New Task"}
+              <span className="text-slate-900">{task ? "Edit Task" : "Create New Task"}</span>
               <span className="text-xs font-normal text-muted-foreground ml-2">ID: {task?.id || 'NEW'}</span>
             </div>
             {task && (
@@ -159,10 +161,10 @@ export function TaskDialog({
                   name="title"
                   render={({ field }) => (
                     <FormItem className="col-span-2">
-                      <FormLabel>Title *</FormLabel>
+                      <FormLabel className="text-slate-900">Title *</FormLabel>
                       <div className="flex gap-2">
                         <FormControl>
-                          <Input placeholder="e.g. Implement OAuth2 Login" {...field} />
+                          <Input placeholder="e.g. Implement OAuth2 Login" {...field} className="text-slate-900" />
                         </FormControl>
                         <Button 
                           type="button" 
@@ -185,10 +187,10 @@ export function TaskDialog({
                   name="status"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Status *</FormLabel>
+                      <FormLabel className="text-slate-900">Status *</FormLabel>
                       <Select onValueChange={field.onChange} value={field.value}>
                         <FormControl>
-                          <SelectTrigger>
+                          <SelectTrigger className="text-slate-900">
                             <SelectValue placeholder="Select status" />
                           </SelectTrigger>
                         </FormControl>
@@ -208,10 +210,23 @@ export function TaskDialog({
                   name="assignee"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Assignee *</FormLabel>
-                      <FormControl>
-                        <Input placeholder="e.g. John Doe" {...field} />
-                      </FormControl>
+                      <FormLabel className="text-slate-900">Assignee *</FormLabel>
+                      <Select onValueChange={field.onChange} value={field.value}>
+                        <FormControl>
+                          <SelectTrigger className="text-slate-900">
+                            <SelectValue placeholder="Select assignee" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          {memberOptions.length > 0 ? (
+                            memberOptions.map((name) => (
+                                <SelectItem key={name} value={name}>{name}</SelectItem>
+                            ))
+                          ) : (
+                              <SelectItem value={currentUsername || "User"}>{currentUsername || "User"}</SelectItem>
+                          )}
+                        </SelectContent>
+                      </Select>
                       <FormMessage />
                     </FormItem>
                   )}
@@ -222,9 +237,9 @@ export function TaskDialog({
                   name="dueDate"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Due Date *</FormLabel>
+                      <FormLabel className="text-slate-900">Due Date *</FormLabel>
                       <FormControl>
-                        <Input type="date" {...field} className="w-full" />
+                        <Input type="date" {...field} className="w-full text-slate-900" />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -237,9 +252,9 @@ export function TaskDialog({
                 name="description"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Detailed Description</FormLabel>
+                    <FormLabel className="text-slate-900">Detailed Description</FormLabel>
                     <FormControl>
-                      <Textarea placeholder="What needs to be done?" className="min-h-[240px] resize-none" {...field} />
+                      <Textarea placeholder="What needs to be done?" className="min-h-[240px] resize-none text-slate-900" {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
