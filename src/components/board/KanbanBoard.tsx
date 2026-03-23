@@ -1,4 +1,3 @@
-
 "use client"
 
 import * as React from "react"
@@ -514,10 +513,10 @@ export function KanbanBoard({ userRole, username, rollNumber }: KanbanBoardProps
                   <SelectItem value="all">All Members</SelectItem>
                   {workspaceMembers.map(member => (
                     <SelectItem key={member.id} value={member.name}>
-                      <div className="flex items-center justify-between w-full gap-2">
+                      <div className="flex items-center justify-between w-full gap-4">
                         <span className="truncate">{member.name}</span>
                         {member.role === 'admin' && (
-                          <span className="text-[8px] font-bold text-primary border border-primary/20 bg-primary/10 px-1.5 py-0.5 rounded uppercase flex items-center gap-1 shrink-0 group-hover:bg-primary/20">
+                          <span className="text-[9px] font-bold text-primary group-focus:text-white border border-primary/20 group-focus:border-white/40 bg-primary/10 group-focus:bg-white/20 px-1.5 py-0.5 rounded uppercase flex items-center gap-1 shrink-0 transition-colors">
                             <ShieldCheck className="h-2.5 w-2.5" />
                             Admin
                           </span>
