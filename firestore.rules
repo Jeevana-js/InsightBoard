@@ -57,36 +57,19 @@ service cloud.firestore {
     // --- Collection Rules ---
 
     match /users/{userId} {
-      // Any signed-in user can 'get' a profile to see collaborator info
       allow get: if isSignedIn();
-      
-      // Only admins can list all users (e.g., for user management)
       allow list: if isAdmin();
-      
-      // Users can create their own profile
       allow create: if isOwner(userId);
-      
-      // Owners can update their own profile. 
-      // Admins can update any profile (e.g., to promote a member to admin).
       allow update: if isOwner(userId) || isAdmin();
-      
-      // Owners can delete their own accounts
       allow delete: if isOwner(userId);
     }
 
     match /boards/{boardId} {
-      // Allow getting a board by ID so students can verify a room code
       allow get: if isSignedIn();
-      
-      // Listing boards is restricted to collaborators
       allow list: if isBoardCollaborator(resource.data);
-      
-      // Teachers can create their own boards
       allow create: if isSignedIn() && request.resource.data.ownerId == request.auth.uid;
       
-      // Update allowed if:
-      // 1. User is already a collaborator
-      // 2. User is joining and adding ONLY themselves to the member list
+      // Update allowed if already a collaborator or joining with their own UID
       allow update: if isSignedIn() && (
         isBoardCollaborator(resource.data) || 
         (request.resource.data.memberIds.hasAny([request.auth.uid]))
@@ -103,22 +86,17 @@ service cloud.firestore {
     }
 
     match /boards/{boardId}/columns/{columnId}/tasks/{taskId} {
-      // Get and List are strictly filtered so students only see their own work.
-      // For teachers (owners), we allow listing if they own the board.
-      allow get, list: if canStudentSeeTask(resource.data);
+      // Students only see tasks they created. Teachers see everything.
+      allow read: if canStudentSeeTask(resource.data);
       
-      // Create allowed if the user is the board owner or the creator identity matches the sender
-      allow create: if isSignedIn() && (
-        request.auth.uid == request.resource.data.ownerId || 
-        request.auth.uid == request.resource.data.creatorId
+      // Create: user must be a collaborator and set themselves as creator (or be owner)
+      allow create: if isBoardCollaborator(request.resource.data) && (
+        request.auth.uid == request.resource.data.creatorId || 
+        request.auth.uid == request.resource.data.ownerId
       );
       
-      // Update and Delete restricted to the teacher or the specific student creator
-      allow update: if canStudentSeeTask(resource.data);
-      
-      allow delete: if canStudentSeeTask(resource.data);
+      // Update/Delete: must be the owner or the specific creator
+      allow update, delete: if canStudentSeeTask(resource.data);
     }
   }
 }
-
-    

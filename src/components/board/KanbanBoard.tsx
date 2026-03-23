@@ -76,7 +76,6 @@ export function KanbanBoard({ userRole, username, rollNumber }: KanbanBoardProps
   const { toast } = useToast()
 
   const isAdmin = userRole === 'admin'
-  const isBoardOwner = boardData?.ownerId === user?.uid
   const boardTitle = isAdmin ? "All Members Board" : "Project reviewer"
   
   const roomInviteCode = activeBoardId || ""
@@ -140,9 +139,7 @@ export function KanbanBoard({ userRole, username, rollNumber }: KanbanBoardProps
     columns.forEach(colId => {
       const baseCol = collection(db, "boards", activeBoardId, "columns", colId, "tasks")
       
-      // Critical privacy logic:
-      // If the current user is the OWNER of this specific board (Teacher), they see ALL tasks (filtered by ownerId).
-      // Otherwise (Students or non-owning Teachers), they only see tasks they CREATED.
+      // Privacy logic: Owners (Teachers) see all. Students see only their own.
       const q = (boardData.ownerId === user.uid)
         ? query(baseCol, where("ownerId", "==", user.uid))
         : query(baseCol, where("creatorId", "==", user.uid))
@@ -158,6 +155,7 @@ export function KanbanBoard({ userRole, username, rollNumber }: KanbanBoardProps
           })
         },
         async (serverError) => {
+          // Surfacing rich error context
           const permissionError = new FirestorePermissionError({
             path: `boards/${activeBoardId}/columns/${colId}/tasks`,
             operation: 'list',
@@ -289,6 +287,7 @@ export function KanbanBoard({ userRole, username, rollNumber }: KanbanBoardProps
 
     const taskRef = doc(db, "boards", activeBoardId, "columns", newTask.status, "tasks", newTask.id)
     
+    // If moving status, delete from old location
     if (selectedTask && selectedTask.status !== newTask.status) {
       const oldRef = doc(db, "boards", activeBoardId, "columns", selectedTask.status, "tasks", selectedTask.id)
       deleteDoc(oldRef).catch(async (err) => {
@@ -597,5 +596,3 @@ export function KanbanBoard({ userRole, username, rollNumber }: KanbanBoardProps
     </div>
   )
 }
-
-    
