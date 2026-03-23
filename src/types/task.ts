@@ -9,6 +9,7 @@ export interface Task {
   dueDate?: string;
   createdAt: string;
   teacherComment?: string;
+  creatorId?: string;
 }
 
 export interface Member {

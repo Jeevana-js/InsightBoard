@@ -125,6 +125,8 @@ export function KanbanBoard({ userRole, username, rollNumber }: KanbanBoardProps
       } else {
         setIsAccessRevoked(true)
       }
+    }, (err) => {
+       console.error("Board sync failed", err);
     })
     return () => unsub()
   }, [activeBoardId, db, user])
@@ -137,11 +139,11 @@ export function KanbanBoard({ userRole, username, rollNumber }: KanbanBoardProps
     columns.forEach(colId => {
       const baseCol = collection(db, "boards", activeBoardId, "columns", colId, "tasks")
       
-      // Teachers see all tasks where they are the ownerId (the workspace owner)
-      // Students see only tasks where their UID is in the memberIds array
+      // Teachers see all tasks in their board (where they are the ownerId)
+      // Students see ONLY tasks they created to maintain privacy from other students
       const q = isAdmin 
         ? query(baseCol, where("ownerId", "==", user.uid))
-        : query(baseCol, where("memberIds", "array-contains", user.uid))
+        : query(baseCol, where("creatorId", "==", user.uid))
 
       const unsub = onSnapshot(q, 
         (snap) => {
@@ -281,7 +283,7 @@ export function KanbanBoard({ userRole, username, rollNumber }: KanbanBoardProps
   }
 
   const handleSaveTask = async (newTask: Task) => {
-    if (!activeBoardId || !boardData) return
+    if (!activeBoardId || !boardData || !user) return
 
     const taskRef = doc(db, "boards", activeBoardId, "columns", newTask.status, "tasks", newTask.id)
     
@@ -298,7 +300,8 @@ export function KanbanBoard({ userRole, username, rollNumber }: KanbanBoardProps
     const taskData = {
       ...newTask,
       ownerId: boardData.ownerId,
-      memberIds: boardData.memberIds || []
+      memberIds: boardData.memberIds || [],
+      creatorId: selectedTask?.creatorId || user.uid // Ensure creator identity is preserved or set
     }
 
     setDoc(taskRef, taskData, { merge: true })
@@ -348,7 +351,8 @@ export function KanbanBoard({ userRole, username, rollNumber }: KanbanBoardProps
       ...task, 
       status: targetStatus,
       ownerId: boardData.ownerId,
-      memberIds: boardData.memberIds || []
+      memberIds: boardData.memberIds || [],
+      creatorId: task.creatorId // Preserve creator during status changes
     }
     
     setDoc(newRef, updatedTask).catch(async (err) => {

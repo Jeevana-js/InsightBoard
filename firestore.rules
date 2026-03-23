@@ -42,6 +42,17 @@ service cloud.firestore {
       );
     }
 
+    /**
+     * Determines if a student can access a specific task.
+     * Students ONLY see tasks they created. Teachers see everything in their board.
+     */
+    function canStudentSeeTask(data) {
+      return isSignedIn() && (
+        request.auth.uid == data.ownerId || // The board owner (teacher)
+        request.auth.uid == data.creatorId   // The individual student who created it
+      );
+    }
+
     // --- Collection Rules ---
 
     match /users/{userId} {
@@ -91,10 +102,22 @@ service cloud.firestore {
     }
 
     match /boards/{boardId}/columns/{columnId}/tasks/{taskId} {
-      allow get, list: if isBoardCollaborator(resource.data);
-      allow create: if isBoardCollaborator(request.resource.data);
-      allow update: if isBoardCollaborator(resource.data) && request.resource.data.ownerId == resource.data.ownerId;
-      allow delete: if isBoardCollaborator(resource.data);
+      // Get and List are strictly filtered so students only see their own work
+      allow get, list: if canStudentSeeTask(resource.data);
+      
+      // Create allowed if the user is the board owner or the creator identity matches the sender
+      allow create: if isSignedIn() && (
+        request.auth.uid == request.resource.data.ownerId || 
+        request.auth.uid == request.resource.data.creatorId
+      );
+      
+      // Update and Delete restricted to the teacher or the specific student creator
+      allow update: if canStudentSeeTask(resource.data) && (
+        request.auth.uid == resource.data.ownerId || 
+        request.auth.uid == request.resource.data.creatorId
+      );
+      
+      allow delete: if canStudentSeeTask(resource.data);
     }
   }
 }
