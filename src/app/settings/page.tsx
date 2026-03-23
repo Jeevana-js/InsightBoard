@@ -2,13 +2,13 @@
 
 import * as React from "react"
 import Link from "next/link"
-import { ChevronLeft, Shield, Users, Settings as SettingsIcon, Trash2, Save, UserPlus, Copy, Check, Link as LinkIcon, Loader2 } from "lucide-react"
+import { ChevronLeft, Shield, Users, Settings as SettingsIcon, Trash2, UserPlus, Copy, Check, Link as LinkIcon, Loader2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Separator } from "@/components/ui/separator"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { 
   Table, 
   TableBody, 
@@ -101,6 +101,8 @@ export default function SettingsPage() {
     })
   }
 
+  const isAdmin = profile?.role === 'admin'
+
   return (
     <div className="min-h-screen bg-background flex flex-col">
       <header className="border-b bg-white px-6 py-4 flex items-center justify-between sticky top-0 z-10">
@@ -126,20 +128,25 @@ export default function SettingsPage() {
               <SettingsIcon className="h-4 w-4" />
               General
             </TabsTrigger>
-            <TabsTrigger 
-              value="members" 
-              className="gap-2 px-4 py-2 data-[state=active]:bg-primary data-[state=active]:text-white rounded-full transition-all"
-            >
-              <Users className="h-4 w-4" />
-              Member Access
-            </TabsTrigger>
-            <TabsTrigger 
-              value="admin" 
-              className="gap-2 px-4 py-2 data-[state=active]:bg-primary data-[state=active]:text-white rounded-full transition-all"
-            >
-              <Shield className="h-4 w-4" />
-              Admin Controls
-            </TabsTrigger>
+            
+            {isAdmin && (
+              <>
+                <TabsTrigger 
+                  value="members" 
+                  className="gap-2 px-4 py-2 data-[state=active]:bg-primary data-[state=active]:text-white rounded-full transition-all"
+                >
+                  <Users className="h-4 w-4" />
+                  Member Access
+                </TabsTrigger>
+                <TabsTrigger 
+                  value="admin" 
+                  className="gap-2 px-4 py-2 data-[state=active]:bg-primary data-[state=active]:text-white rounded-full transition-all"
+                >
+                  <Shield className="h-4 w-4" />
+                  Admin Controls
+                </TabsTrigger>
+              </>
+            )}
           </TabsList>
 
           <div className="max-w-4xl w-full mx-auto">
@@ -175,7 +182,7 @@ export default function SettingsPage() {
                 </CardContent>
               </Card>
 
-              {profile?.role === 'admin' && (
+              {isAdmin && (
                 <Card className="border-accent/20 bg-accent/5 overflow-hidden">
                   <div className="h-1 bg-accent w-full" />
                   <CardHeader>
@@ -208,116 +215,114 @@ export default function SettingsPage() {
               )}
             </TabsContent>
 
-            <TabsContent value="members" className="mt-0 space-y-6 animate-in fade-in slide-in-from-bottom-2">
-              <Card>
-                <CardHeader className="flex flex-row items-center justify-between">
-                  <div>
-                    <CardTitle>Team Members</CardTitle>
-                    <CardDescription>
-                      Manage who has access to this board and their permission levels.
-                    </CardDescription>
-                  </div>
-                  {profile?.role === 'admin' && (
-                    <Button size="sm">
-                      <UserPlus className="h-4 w-4 mr-2" />
-                      Invite Member
-                    </Button>
-                  )}
-                </CardHeader>
-                <CardContent>
-                  {isProfileLoading ? (
-                    <div className="flex items-center justify-center p-8">
-                      <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-                    </div>
-                  ) : (
-                    <Table>
-                      <TableHeader>
-                        <TableRow>
-                          <TableHead>User</TableHead>
-                          <TableHead>Role</TableHead>
-                          <TableHead>Status</TableHead>
-                          <TableHead className="text-right">Actions</TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {members.map((member) => (
-                          <TableRow key={member.id}>
-                            <TableCell>
-                              <div>
-                                <p className="font-medium">{member.name}</p>
-                                <p className="text-xs text-muted-foreground">{member.email}</p>
-                              </div>
-                            </TableCell>
-                            <TableCell>
-                              {profile?.role === 'admin' ? (
-                                <Select 
-                                  value={member.role} 
-                                  onValueChange={(v) => handleUpdateRole(member.id, v as any)}
-                                >
-                                  <SelectTrigger className="w-[110px] h-8 text-xs">
-                                    <SelectValue />
-                                  </SelectTrigger>
-                                  <SelectContent>
-                                    <SelectItem value="Admin">Admin</SelectItem>
-                                    <SelectItem value="Member">Member</SelectItem>
-                                  </SelectContent>
-                                </Select>
-                              ) : (
-                                <Badge variant="outline" className="text-[10px]">{member.role}</Badge>
-                              )}
-                            </TableCell>
-                            <TableCell>
-                              <Badge variant={member.status === 'Active' ? 'default' : 'secondary'} className="text-[10px]">
-                                {member.status}
-                              </Badge>
-                            </TableCell>
-                            <TableCell className="text-right">
-                              <Button 
-                                variant="ghost" 
-                                size="icon" 
-                                className="h-8 w-8 text-destructive"
-                                onClick={() => handleDeleteMember(member.id)}
-                                disabled={member.id === user?.uid}
-                              >
-                                <Trash2 className="h-4 w-4" />
-                              </Button>
-                            </TableCell>
-                          </TableRow>
-                        ))}
-                      </TableBody>
-                    </Table>
-                  )}
-                </CardContent>
-              </Card>
-            </TabsContent>
+            {isAdmin && (
+              <>
+                <TabsContent value="members" className="mt-0 space-y-6 animate-in fade-in slide-in-from-bottom-2">
+                  <Card>
+                    <CardHeader className="flex flex-row items-center justify-between">
+                      <div>
+                        <CardTitle>Team Members</CardTitle>
+                        <CardDescription>
+                          Manage who has access to this board and their permission levels.
+                        </CardDescription>
+                      </div>
+                      <Button size="sm">
+                        <UserPlus className="h-4 w-4 mr-2" />
+                        Invite Member
+                      </Button>
+                    </CardHeader>
+                    <CardContent>
+                      {isProfileLoading ? (
+                        <div className="flex items-center justify-center p-8">
+                          <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+                        </div>
+                      ) : (
+                        <Table>
+                          <TableHeader>
+                            <TableRow>
+                              <TableHead>User</TableHead>
+                              <TableHead>Role</TableHead>
+                              <TableHead>Status</TableHead>
+                              <TableHead className="text-right">Actions</TableHead>
+                            </TableRow>
+                          </TableHeader>
+                          <TableBody>
+                            {members.map((member) => (
+                              <TableRow key={member.id}>
+                                <TableCell>
+                                  <div>
+                                    <p className="font-medium">{member.name}</p>
+                                    <p className="text-xs text-muted-foreground">{member.email}</p>
+                                  </div>
+                                </TableCell>
+                                <TableCell>
+                                  <Select 
+                                    value={member.role} 
+                                    onValueChange={(v) => handleUpdateRole(member.id, v as any)}
+                                  >
+                                    <SelectTrigger className="w-[110px] h-8 text-xs">
+                                      <SelectValue />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                      <SelectItem value="Admin">Admin</SelectItem>
+                                      <SelectItem value="Member">Member</SelectItem>
+                                    </SelectContent>
+                                  </Select>
+                                </TableCell>
+                                <TableCell>
+                                  <Badge variant={member.status === 'Active' ? 'default' : 'secondary'} className="text-[10px]">
+                                    {member.status}
+                                  </Badge>
+                                </TableCell>
+                                <TableCell className="text-right">
+                                  <Button 
+                                    variant="ghost" 
+                                    size="icon" 
+                                    className="h-8 w-8 text-destructive"
+                                    onClick={() => handleDeleteMember(member.id)}
+                                    disabled={member.id === user?.uid}
+                                  >
+                                    <Trash2 className="h-4 w-4" />
+                                  </Button>
+                                </TableCell>
+                              </TableRow>
+                            ))}
+                          </TableBody>
+                        </Table>
+                      )}
+                    </CardContent>
+                  </Card>
+                </TabsContent>
 
-            <TabsContent value="admin" className="mt-0 space-y-6 animate-in fade-in slide-in-from-bottom-2">
-              <Card className="border-destructive/20">
-                <CardHeader className="bg-destructive/5">
-                  <CardTitle className="text-destructive">Danger Zone</CardTitle>
-                  <CardDescription>
-                    Irreversible actions that affect the entire board.
-                  </CardDescription>
-                </CardHeader>
-                <CardContent className="pt-6 space-y-6">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-sm font-semibold">Reset Board State</p>
-                      <p className="text-xs text-muted-foreground">Clear all current tasks and restore initial demo content.</p>
-                    </div>
-                    <Button variant="outline" disabled={profile?.role !== 'admin'}>Reset Board</Button>
-                  </div>
-                  <Separator />
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-sm font-semibold text-destructive">Delete Permanently</p>
-                      <p className="text-xs text-muted-foreground">Destroy this board and all its associated data forever.</p>
-                    </div>
-                    <Button variant="destructive" disabled={profile?.role !== 'admin'}>Delete Board</Button>
-                  </div>
-                </CardContent>
-              </Card>
-            </TabsContent>
+                <TabsContent value="admin" className="mt-0 space-y-6 animate-in fade-in slide-in-from-bottom-2">
+                  <Card className="border-destructive/20">
+                    <CardHeader className="bg-destructive/5">
+                      <CardTitle className="text-destructive">Danger Zone</CardTitle>
+                      <CardDescription>
+                        Irreversible actions that affect the entire board.
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent className="pt-6 space-y-6">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="text-sm font-semibold">Reset Board State</p>
+                          <p className="text-xs text-muted-foreground">Clear all current tasks and restore initial demo content.</p>
+                        </div>
+                        <Button variant="outline">Reset Board</Button>
+                      </div>
+                      <Separator />
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="text-sm font-semibold text-destructive">Delete Permanently</p>
+                          <p className="text-xs text-muted-foreground">Destroy this board and all its associated data forever.</p>
+                        </div>
+                        <Button variant="destructive">Delete Board</Button>
+                      </div>
+                    </CardContent>
+                  </Card>
+                </TabsContent>
+              </>
+            )}
           </div>
         </Tabs>
       </main>
