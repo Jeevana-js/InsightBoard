@@ -1,3 +1,4 @@
+
 "use client"
 
 import * as React from "react"
@@ -115,9 +116,18 @@ export function TaskDialog({
     }
   }
 
+  const generateNumericId = () => {
+    // Generate a numeric ID starting from 225001. 
+    // Since this is a client-side prototype, we use a random offset from the base
+    // to simulate unique IDs while maintaining the requested numeric format.
+    const base = 225001;
+    const randomOffset = Math.floor(Math.random() * 10000);
+    return (base + randomOffset).toString();
+  }
+
   const onSubmit = (values: z.infer<typeof taskSchema>) => {
     const newTask: Task = {
-      id: task?.id || Math.random().toString(36).substr(2, 9).toUpperCase(),
+      id: task?.id || generateNumericId(),
       title: values.title,
       description: values.description || "",
       status: values.status,
