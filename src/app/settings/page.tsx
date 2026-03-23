@@ -2,7 +2,7 @@
 
 import * as React from "react"
 import Link from "next/link"
-import { ChevronLeft, Shield, Users, Settings as SettingsIcon, Trash2, Save, UserPlus } from "lucide-react"
+import { ChevronLeft, Shield, Users, Settings as SettingsIcon, Trash2, Save, UserPlus, Copy, Check, Link as LinkIcon } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -27,11 +27,30 @@ import {
 import { Badge } from "@/components/ui/badge"
 import { useToast } from "@/hooks/use-toast"
 import { INITIAL_MEMBERS, Member } from "@/types/task"
+import { useUser } from "@/firebase"
 
 export default function SettingsPage() {
   const [boardName, setBoardName] = React.useState("SprintSync Board")
   const [members, setMembers] = React.useState<Member[]>(INITIAL_MEMBERS)
+  const [hasCopied, setHasCopied] = React.useState(false)
+  const { user } = useUser()
   const { toast } = useToast()
+
+  const roomInviteLink = React.useMemo(() => {
+    if (typeof window === "undefined") return ""
+    const origin = window.location.origin
+    return `${origin}/signup?boardId=${user?.uid || 'main-room'}`
+  }, [user])
+
+  const handleCopyLink = () => {
+    navigator.clipboard.writeText(roomInviteLink)
+    setHasCopied(true)
+    toast({
+      title: "Link Copied",
+      description: "Invitation link ready to share with students.",
+    })
+    setTimeout(() => setHasCopied(false), 2000)
+  }
 
   const handleSaveGeneral = () => {
     toast({
@@ -77,8 +96,8 @@ export default function SettingsPage() {
       </header>
 
       <main className="flex-1 max-w-6xl w-full mx-auto p-6 md:p-8">
-        <Tabs defaultValue="general" className="flex flex-col md:flex-row gap-8">
-          <TabsList className="flex flex-col h-auto bg-transparent border-none p-0 gap-1 min-w-[200px] items-start">
+        <Tabs defaultValue="general" className="flex flex-col md:flex-row gap-8 items-start">
+          <TabsList className="flex flex-col h-auto bg-transparent border-none p-0 gap-1 min-w-[200px] items-start sticky top-24 self-start">
             <TabsTrigger 
               value="general" 
               className="w-full justify-start gap-2 px-4 py-3 data-[state=active]:bg-muted/50 data-[state=active]:text-primary"
@@ -102,7 +121,7 @@ export default function SettingsPage() {
             </TabsTrigger>
           </TabsList>
 
-          <div className="flex-1">
+          <div className="flex-1 space-y-6">
             <TabsContent value="general" className="mt-0 space-y-6">
               <Card>
                 <CardHeader>
@@ -132,6 +151,35 @@ export default function SettingsPage() {
                         <SelectItem value="public">Public (Open to web)</SelectItem>
                       </SelectContent>
                     </Select>
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card className="border-accent/20">
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <LinkIcon className="h-5 w-5 text-accent" />
+                    Room Invitation Link
+                  </CardTitle>
+                  <CardDescription>
+                    Share this unique link to invite students to your room. They will be forced to join as Members.
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="flex gap-2">
+                    <Input 
+                      readOnly 
+                      value={roomInviteLink} 
+                      className="bg-muted/50 border-dashed"
+                    />
+                    <Button variant="outline" size="icon" onClick={handleCopyLink} className="shrink-0">
+                      {hasCopied ? <Check className="h-4 w-4 text-emerald-500" /> : <Copy className="h-4 w-4" />}
+                    </Button>
+                  </div>
+                  <div className="rounded-lg bg-accent/5 p-3 border border-accent/10">
+                    <p className="text-[11px] text-accent font-medium leading-relaxed">
+                      <strong>Security Policy:</strong> This link is restricted. Any account created using this ID is automatically assigned the <strong>Student Member</strong> role and cannot be elevated to Teacher/Admin through this route.
+                    </p>
                   </div>
                 </CardContent>
               </Card>
