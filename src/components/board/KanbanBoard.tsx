@@ -2,7 +2,6 @@
 "use client"
 
 import * as React from "react"
-import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { Search, Plus, LayoutGrid, List, SlidersHorizontal, User as UserIcon, LogOut, ShieldCheck, Share2, Copy, Check, Hash, Loader2, AlertCircle, Users } from "lucide-react"
 import { Button } from "@/components/ui/button"
@@ -40,6 +39,7 @@ import { doc, getDoc, collection, query, where, getDocs, onSnapshot, setDoc, del
 import { errorEmitter } from "@/firebase/error-emitter"
 import { FirestorePermissionError } from "@/firebase/errors"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
+import Link from "next/link"
 
 interface WorkspaceMember {
   id: string
@@ -502,7 +502,7 @@ export function KanbanBoard({ userRole, username, rollNumber }: KanbanBoardProps
           </div>
 
           {isAdmin && (
-            <div className="w-[200px]">
+            <div className="w-[240px]">
               <Select value={assigneeFilter} onValueChange={setAssigneeFilter}>
                 <SelectTrigger className="h-10 bg-white shadow-sm border-muted">
                   <div className="flex items-center gap-2">
@@ -514,14 +514,14 @@ export function KanbanBoard({ userRole, username, rollNumber }: KanbanBoardProps
                   <SelectItem value="all">All Members</SelectItem>
                   {workspaceMembers.map(member => (
                     <SelectItem key={member.id} value={member.name}>
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center justify-between w-full gap-2">
+                        <span className="truncate">{member.name}</span>
                         {member.role === 'admin' && (
-                          <span className="text-[9px] font-bold text-primary border border-primary/20 bg-primary/5 px-1 rounded uppercase mr-1 flex items-center gap-1">
+                          <span className="text-[8px] font-bold text-primary border border-primary/20 bg-primary/10 px-1.5 py-0.5 rounded uppercase flex items-center gap-1 shrink-0 group-hover:bg-primary/20">
                             <ShieldCheck className="h-2.5 w-2.5" />
                             Admin
                           </span>
                         )}
-                        {member.name}
                       </div>
                     </SelectItem>
                   ))}
