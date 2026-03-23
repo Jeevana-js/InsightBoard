@@ -1,14 +1,4 @@
 
-/**
- * SprintSync Board Security Rules
- * 
- * Core Philosophy:
- * This ruleset implements a robust, role-based access control (RBAC) and ownership model. 
- * It distinguishes between 'admin' (Teachers) and 'member' (Students). Teachers have 
- * elevated privileges, such as viewing all user profiles. Collaborative access to 
- * Kanban boards is managed through a membership model (owner + member list).
- */
-
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
@@ -25,7 +15,6 @@ service cloud.firestore {
 
     /**
      * Checks if the requester has the 'admin' role.
-     * Performs a look-up to the user's profile document.
      */
     function isAdmin() {
       return isSignedIn() && 
@@ -45,7 +34,7 @@ service cloud.firestore {
 
     /**
      * Determines if a student can access a specific task.
-     * Students ONLY see tasks they created. Teachers see everything in their board.
+     * Students ONLY see tasks they created. Teachers see everything in their own board.
      */
     function canStudentSeeTask(data) {
       return isSignedIn() && (
@@ -58,7 +47,7 @@ service cloud.firestore {
 
     match /users/{userId} {
       allow get: if isSignedIn();
-      allow list: if isAdmin();
+      allow list: if isSignedIn();
       allow create: if isOwner(userId);
       allow update: if isOwner(userId) || isAdmin();
       allow delete: if isOwner(userId);
@@ -66,10 +55,9 @@ service cloud.firestore {
 
     match /boards/{boardId} {
       allow get: if isSignedIn();
-      allow list: if isBoardCollaborator(resource.data);
+      allow list: if isSignedIn(); // Filtered by board membership in app
       allow create: if isSignedIn() && request.resource.data.ownerId == request.auth.uid;
       
-      // Update allowed if already a collaborator or joining with their own UID
       allow update: if isSignedIn() && (
         isBoardCollaborator(resource.data) || 
         (request.resource.data.memberIds.hasAny([request.auth.uid]))
@@ -81,15 +69,15 @@ service cloud.firestore {
     match /boards/{boardId}/columns/{columnId} {
       allow get, list: if isBoardCollaborator(resource.data);
       allow create: if isBoardCollaborator(request.resource.data);
-      allow update: if isBoardCollaborator(resource.data) && request.resource.data.ownerId == resource.data.ownerId;
+      allow update: if isBoardCollaborator(resource.data);
       allow delete: if isBoardCollaborator(resource.data);
     }
 
     match /boards/{boardId}/columns/{columnId}/tasks/{taskId} {
-      // Students only see tasks they created. Teachers see everything.
+      // READ: Students only see tasks they created. Teachers see everything on their board.
       allow read: if canStudentSeeTask(resource.data);
       
-      // Create/Update: user must be a collaborator and set themselves as creator (or be owner)
+      // WRITE: User must be a member and either be the creator or the board owner.
       allow create, update: if isBoardCollaborator(request.resource.data) && (
         request.auth.uid == request.resource.data.creatorId || 
         request.auth.uid == request.resource.data.ownerId

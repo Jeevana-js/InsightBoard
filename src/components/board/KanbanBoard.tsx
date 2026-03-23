@@ -139,7 +139,8 @@ export function KanbanBoard({ userRole, username, rollNumber }: KanbanBoardProps
     columns.forEach(colId => {
       const baseCol = collection(db, "boards", activeBoardId, "columns", colId, "tasks")
       
-      // Privacy logic: Owners (Teachers) see all. Students see only their own.
+      // Privacy logic: Board Owners (usually Teachers) see all tasks on their board.
+      // Members (Students) only see tasks where they are the creatorId.
       const q = (boardData.ownerId === user.uid)
         ? query(baseCol, where("ownerId", "==", user.uid))
         : query(baseCol, where("creatorId", "==", user.uid))
@@ -155,7 +156,6 @@ export function KanbanBoard({ userRole, username, rollNumber }: KanbanBoardProps
           })
         },
         async (serverError) => {
-          // Surfacing rich error context
           const permissionError = new FirestorePermissionError({
             path: `boards/${activeBoardId}/columns/${colId}/tasks`,
             operation: 'list',
@@ -287,7 +287,6 @@ export function KanbanBoard({ userRole, username, rollNumber }: KanbanBoardProps
 
     const taskRef = doc(db, "boards", activeBoardId, "columns", newTask.status, "tasks", newTask.id)
     
-    // If moving status, delete from old location
     if (selectedTask && selectedTask.status !== newTask.status) {
       const oldRef = doc(db, "boards", activeBoardId, "columns", selectedTask.status, "tasks", selectedTask.id)
       deleteDoc(oldRef).catch(async (err) => {
@@ -337,7 +336,7 @@ export function KanbanBoard({ userRole, username, rollNumber }: KanbanBoardProps
     toast({ 
       variant: "destructive",
       title: "Task Deleted", 
-      description: `Task ${taskId} has been removed from Firestore.`,
+      description: `Task ${taskId} has been removed.`,
     })
     setIsTaskDialogOpen(false)
   }
@@ -373,10 +372,7 @@ export function KanbanBoard({ userRole, username, rollNumber }: KanbanBoardProps
       }));
     });
 
-    toast({ 
-      title: "Task Moved", 
-      description: `Moved ${taskId} to ${targetStatus}`,
-    })
+    toast({ title: "Task Moved", description: `Moved ${taskId} to ${targetStatus}` })
   }
 
   const handleEditColumn = (oldName: string, newName: string) => {
@@ -443,14 +439,14 @@ export function KanbanBoard({ userRole, username, rollNumber }: KanbanBoardProps
                         Room Invite Code
                       </h4>
                       <p className="text-[11px] text-muted-foreground leading-relaxed">
-                        Students using this code are forced to join as <strong>Members</strong> only.
+                        Students using this code join as <strong>Members</strong>.
                       </p>
                     </div>
                     <div className="flex gap-2">
                       <Input 
                         readOnly 
                         value={roomInviteCode} 
-                        className="h-10 text-xs bg-muted/30 border border-accent/20 font-code text-center font-bold text-slate-900 selection:bg-primary/20"
+                        className="h-10 text-xs bg-muted/30 border border-accent/20 font-code text-center font-bold text-slate-900"
                       />
                       <Button size="icon" variant="secondary" className="h-10 w-10 shrink-0 shadow-sm" onClick={copyInviteCode}>
                         {hasCopied ? <Check className="h-5 w-5 text-emerald-500" /> : <Copy className="h-5 w-5" />}
@@ -501,7 +497,7 @@ export function KanbanBoard({ userRole, username, rollNumber }: KanbanBoardProps
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input 
               placeholder="Search tasks or IDs..." 
-              className="pl-10 h-10 bg-muted/30 border-none focus-visible:ring-1 transition-all"
+              className="pl-10 h-10 bg-muted/30 border-none focus-visible:ring-1"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
             />

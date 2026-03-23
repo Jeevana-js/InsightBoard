@@ -124,8 +124,7 @@ export function TaskDialog({
 
   const generateRollId = () => {
     const baseId = userRollNumber || "225001";
-    // Check how many tasks this user already has to create a sequential ID
-    // Filtering by prefix ensures we count tasks starting with this roll number
+    // Count existing tasks for this user to create a sequential ID: RollNumber-01, RollNumber-02...
     const userTasksCount = tasks.filter(t => t.id.startsWith(baseId)).length;
     const nextNum = userTasksCount + 1;
     return `${baseId}-${nextNum.toString().padStart(2, '0')}`;
@@ -307,18 +306,18 @@ export function TaskDialog({
                     <FormControl>
                       {isAdmin ? (
                         <Textarea 
-                          placeholder="Add feedback for the student here..." 
+                          placeholder="Add feedback for the student..." 
                           className="min-h-[120px] resize-none bg-white border-amber-200 focus-visible:ring-amber-400 text-slate-900" 
                           {...field} 
                         />
                       ) : (
                         <div className="p-3 bg-white/80 rounded-lg border border-amber-100 min-h-[80px] text-sm text-slate-700 leading-relaxed whitespace-pre-wrap italic">
-                          {field.value || "No teacher feedback provided yet."}
+                          {field.value || "No feedback provided yet."}
                         </div>
                       )}
                     </FormControl>
                     <p className="text-[10px] text-amber-700/70 italic px-1">
-                      {isAdmin ? "Only you can edit this section. Students can only view it." : "Only your teacher can edit this feedback section."}
+                      {isAdmin ? "Only you can edit this section." : "Only your teacher can edit this section."}
                     </p>
                     <FormMessage />
                   </FormItem>
