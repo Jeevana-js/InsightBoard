@@ -65,7 +65,7 @@ export function KanbanColumn({ status, tasks, onAddTask, onTaskClick, onDropTask
         </div>
       </div>
 
-      <div className="flex flex-col gap-3 h-full overflow-y-auto min-h-[500px]">
+      <div className="flex flex-col gap-3 h-full overflow-y-auto min-h-[500px] column-scroll-area">
         {tasks.map((task) => (
           <TaskCard 
             key={task.id} 

@@ -1,7 +1,7 @@
 "use client"
 
 import * as React from "react"
-import { Search, Filter, Plus, LayoutGrid, List, SlidersHorizontal, User } from "lucide-react"
+import { Search, Filter, Plus, LayoutGrid, List, SlidersHorizontal, User, ArrowUp, ArrowDown } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { 
@@ -106,8 +106,22 @@ export function KanbanBoard() {
     })
   }
 
+  const scrollToTop = () => {
+    const areas = document.querySelectorAll('.column-scroll-area');
+    areas.forEach(area => {
+      area.scrollTo({ top: 0, behavior: 'smooth' });
+    });
+  };
+
+  const scrollToBottom = () => {
+    const areas = document.querySelectorAll('.column-scroll-area');
+    areas.forEach(area => {
+      area.scrollTo({ top: area.scrollHeight, behavior: 'smooth' });
+    });
+  };
+
   return (
-    <div className="flex flex-col h-screen overflow-hidden bg-background">
+    <div className="flex flex-col h-screen overflow-hidden bg-background relative">
       {/* Top Header/Toolbar */}
       <header className="border-b bg-white px-6 py-4 flex flex-col gap-4">
         <div className="flex justify-between items-center">
@@ -181,6 +195,28 @@ export function KanbanBoard() {
           ))}
         </div>
       </main>
+
+      {/* Floating Scroll Buttons */}
+      <div className="fixed bottom-6 right-6 flex flex-col gap-2 z-50">
+        <Button 
+          size="icon" 
+          variant="secondary" 
+          className="rounded-full shadow-lg border h-10 w-10 bg-white hover:bg-muted"
+          onClick={scrollToTop}
+          title="Scroll All to Top"
+        >
+          <ArrowUp className="h-5 w-5 text-primary" />
+        </Button>
+        <Button 
+          size="icon" 
+          variant="secondary" 
+          className="rounded-full shadow-lg border h-10 w-10 bg-white hover:bg-muted"
+          onClick={scrollToBottom}
+          title="Scroll All to Bottom"
+        >
+          <ArrowDown className="h-5 w-5 text-primary" />
+        </Button>
+      </div>
 
       <TaskDialog 
         open={isTaskDialogOpen} 
