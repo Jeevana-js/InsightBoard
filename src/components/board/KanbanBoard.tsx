@@ -244,20 +244,22 @@ export function KanbanBoard({ userRole, username }: KanbanBoardProps) {
             />
           </div>
           
-          <div className="flex items-center gap-2">
-            <UserIcon className="h-4 w-4 text-muted-foreground" />
-            <Select value={assigneeFilter} onValueChange={setAssigneeFilter}>
-              <SelectTrigger className="w-[180px] h-9 bg-muted/30 border-none">
-                <SelectValue placeholder="All Assignees" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Members</SelectItem>
-                {availableAssignees.map(m => (
-                  <SelectItem key={m} value={m}>{m}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
+          {isAdmin && (
+            <div className="flex items-center gap-2">
+              <UserIcon className="h-4 w-4 text-muted-foreground" />
+              <Select value={assigneeFilter} onValueChange={setAssigneeFilter}>
+                <SelectTrigger className="w-[180px] h-9 bg-muted/30 border-none">
+                  <SelectValue placeholder="All Assignees" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Members</SelectItem>
+                  {availableAssignees.map(m => (
+                    <SelectItem key={m} value={m}>{m}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
 
           <div className="flex bg-muted/30 p-1 rounded-md ml-auto border">
             <Button 
