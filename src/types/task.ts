@@ -22,18 +22,6 @@ export interface Member {
 
 export const COLUMNS: TaskStatus[] = ['New', 'In Development', 'Resolved', 'Closed'];
 
-export const TEAM_MEMBERS = [
-  'Alex Rivera',
-  'Jordan Smith',
-  'Taylor Chen',
-  'Morgan Lee',
-  'Casey Wright',
-  'Riley Quinn'
-];
+export const TEAM_MEMBERS: string[] = [];
 
-export const INITIAL_MEMBERS: Member[] = [
-  { id: '1', name: 'Alex Rivera', role: 'Admin', email: 'alex@sprintsync.com', status: 'Active' },
-  { id: '2', name: 'Jordan Smith', role: 'Member', email: 'jordan@sprintsync.com', status: 'Active' },
-  { id: '3', name: 'Taylor Chen', role: 'Member', email: 'taylor@sprintsync.com', status: 'Active' },
-  { id: '4', name: 'Morgan Lee', role: 'Member', email: 'morgan@sprintsync.com', status: 'Active' },
-];
+export const INITIAL_MEMBERS: Member[] = [];

@@ -1,4 +1,3 @@
-
 "use client"
 
 import * as React from "react"
@@ -30,48 +29,14 @@ import {
 import { KanbanColumn } from "./KanbanColumn"
 import { TaskListView } from "./TaskListView"
 import { TaskDialog } from "@/components/task/TaskDialog"
-import { Task, TaskStatus, COLUMNS, TEAM_MEMBERS } from "@/types/task"
+import { Task, TaskStatus, COLUMNS } from "@/types/task"
 import { useToast } from "@/hooks/use-toast"
 import { cn } from "@/lib/utils"
 import { useAuth, useUser } from "@/firebase"
 import { signOut } from "firebase/auth"
 import { Badge } from "@/components/ui/badge"
 
-const INITIAL_TASKS: Task[] = [
-  {
-    id: "SYN-101",
-    title: "Project Discovery and Architecture Design",
-    description: "Initial research phase for the SprintSync platform including tech stack evaluation.",
-    status: "Resolved",
-    assignee: "Alex Rivera",
-    dueDate: "2024-05-20",
-    acceptanceCriteria: ["Tech stack finalized", "System diagram approved"],
-    subTasks: ["Research Genkit", "Define API schema"],
-    createdAt: new Date().toISOString()
-  },
-  {
-    id: "SYN-102",
-    title: "Implement Core Kanban UI",
-    description: "Create the responsive grid layout for the board columns and task cards.",
-    status: "In Development",
-    assignee: "Jordan Smith",
-    dueDate: "2024-06-15",
-    acceptanceCriteria: ["Drag and drop works", "Responsive layout"],
-    subTasks: ["Column component", "Card component"],
-    createdAt: new Date().toISOString()
-  },
-  {
-    id: "SYN-103",
-    title: "AI Task Elaboration Service",
-    description: "Integrate Gemini models to help users flesh out thin task descriptions.",
-    status: "New",
-    assignee: "Taylor Chen",
-    dueDate: "2024-07-01",
-    acceptanceCriteria: ["Prompt engineering done", "UI button integrated"],
-    subTasks: ["Write Genkit flows", "Add loading states"],
-    createdAt: new Date().toISOString()
-  }
-]
+const INITIAL_TASKS: Task[] = []
 
 type ViewMode = 'board' | 'list';
 
@@ -102,7 +67,6 @@ export function KanbanBoard({ userRole, username }: KanbanBoardProps) {
   const isAdmin = userRole === 'admin'
   const boardTitle = isAdmin ? "All Members Board" : "Project reviewer"
   
-  // Use user.uid as a mock room ID for this prototype
   const roomInviteLink = React.useMemo(() => {
     if (typeof window === "undefined") return ""
     const origin = window.location.origin
@@ -168,9 +132,15 @@ export function KanbanBoard({ userRole, username }: KanbanBoardProps) {
     }
   }
 
+  const availableAssignees = React.useMemo(() => {
+    const names = new Set<string>()
+    if (username) names.add(username)
+    tasks.forEach(t => { if (t.assignee) names.add(t.assignee) })
+    return Array.from(names)
+  }, [tasks, username])
+
   return (
     <div className="flex flex-col h-screen overflow-hidden bg-background">
-      {/* Top Header/Toolbar */}
       <header className="border-b bg-white px-6 py-4 flex flex-col gap-4 shadow-sm relative z-20">
         <div className="flex justify-between items-center">
           <div className="flex items-center gap-4">
@@ -226,9 +196,6 @@ export function KanbanBoard({ userRole, username }: KanbanBoardProps) {
                         {hasCopied ? <Check className="h-4 w-4 text-emerald-500" /> : <Copy className="h-4 w-4" />}
                       </Button>
                     </div>
-                    <p className="text-[9px] italic text-muted-foreground text-center">
-                      Security: Teachers cannot be created via invite links.
-                    </p>
                   </div>
                 </PopoverContent>
               </Popover>
@@ -288,7 +255,7 @@ export function KanbanBoard({ userRole, username }: KanbanBoardProps) {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All Members</SelectItem>
-                {TEAM_MEMBERS.map(m => (
+                {availableAssignees.map(m => (
                   <SelectItem key={m} value={m}>{m}</SelectItem>
                 ))}
               </SelectContent>
@@ -322,8 +289,7 @@ export function KanbanBoard({ userRole, username }: KanbanBoardProps) {
         </div>
       </header>
 
-      {/* Main Content Area */}
-      <main className="flex-1 overflow-auto p-6 scrollbar-thin scrollbar-thumb-muted-foreground/20">
+      <main className="flex-1 overflow-auto p-6">
         {viewMode === 'board' ? (
           <div className="flex gap-6 h-full min-w-max">
             {COLUMNS.map((status) => (
@@ -350,6 +316,7 @@ export function KanbanBoard({ userRole, username }: KanbanBoardProps) {
         task={selectedTask}
         onSave={handleSaveTask}
         defaultStatus={activeStatus}
+        currentUsername={username || undefined}
       />
     </div>
   )

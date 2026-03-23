@@ -34,10 +34,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { Task, TaskStatus, TEAM_MEMBERS, COLUMNS } from "@/types/task"
+import { Task, TaskStatus, COLUMNS } from "@/types/task"
 import { generateTaskDetails } from "@/ai/flows/ai-task-description-generator"
 
-// Use coerce to handle string-to-date conversion from the input field
 const taskSchema = z.object({
   title: z.string().min(3, "Title must be at least 3 characters"),
   description: z.string().optional(),
@@ -52,9 +51,10 @@ interface TaskDialogProps {
   onOpenChange: (open: boolean) => void
   onSave: (task: Task) => void
   defaultStatus?: TaskStatus
+  currentUsername?: string
 }
 
-export function TaskDialog({ task, open, onOpenChange, onSave, defaultStatus }: TaskDialogProps) {
+export function TaskDialog({ task, open, onOpenChange, onSave, defaultStatus, currentUsername }: TaskDialogProps) {
   const [isAiGenerating, setIsAiGenerating] = React.useState(false)
   const [subTasks, setSubTasks] = React.useState<string[]>(task?.subTasks || [])
   const [acceptanceCriteria, setAcceptanceCriteria] = React.useState<string[]>(task?.acceptanceCriteria || [])
@@ -65,7 +65,7 @@ export function TaskDialog({ task, open, onOpenChange, onSave, defaultStatus }: 
       title: task?.title || "",
       description: task?.description || "",
       status: task?.status || defaultStatus || 'New',
-      assignee: task?.assignee || "",
+      assignee: task?.assignee || currentUsername || "",
       dueDate: task?.dueDate ? format(new Date(task.dueDate), "yyyy-MM-dd") : "",
     },
   })
@@ -76,13 +76,13 @@ export function TaskDialog({ task, open, onOpenChange, onSave, defaultStatus }: 
         title: task?.title || "",
         description: task?.description || "",
         status: task?.status || defaultStatus || 'New',
-        assignee: task?.assignee || "",
+        assignee: task?.assignee || currentUsername || "",
         dueDate: task?.dueDate ? format(new Date(task.dueDate), "yyyy-MM-dd") : "",
       })
       setSubTasks(task?.subTasks || [])
       setAcceptanceCriteria(task?.acceptanceCriteria || [])
     }
-  }, [open, task, defaultStatus, form])
+  }, [open, task, defaultStatus, form, currentUsername])
 
   const handleAiGenerate = async () => {
     const title = form.getValues("title")
@@ -106,7 +106,7 @@ export function TaskDialog({ task, open, onOpenChange, onSave, defaultStatus }: 
 
   const onSubmit = (values: z.infer<typeof taskSchema>) => {
     const newTask: Task = {
-      id: task?.id || Math.random().toString(36).substr(2, 9),
+      id: task?.id || Math.random().toString(36).substr(2, 9).toUpperCase(),
       title: values.title,
       description: values.description || "",
       status: values.status,
@@ -189,18 +189,9 @@ export function TaskDialog({ task, open, onOpenChange, onSave, defaultStatus }: 
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Assignee</FormLabel>
-                      <Select onValueChange={field.onChange} defaultValue={field.value}>
-                        <FormControl>
-                          <SelectTrigger>
-                            <SelectValue placeholder="Unassigned" />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          {TEAM_MEMBERS.map((member) => (
-                            <SelectItem key={member} value={member}>{member}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
+                      <FormControl>
+                        <Input placeholder="e.g. John Doe" {...field} />
+                      </FormControl>
                       <FormMessage />
                     </FormItem>
                   )}
@@ -213,13 +204,8 @@ export function TaskDialog({ task, open, onOpenChange, onSave, defaultStatus }: 
                     <FormItem>
                       <FormLabel>Due Date</FormLabel>
                       <FormControl>
-                        <Input 
-                          type="date" 
-                          {...field} 
-                          className="w-full"
-                        />
+                        <Input type="date" {...field} className="w-full" />
                       </FormControl>
-                      <FormDescription>Select or type a date (YYYY-MM-DD)</FormDescription>
                       <FormMessage />
                     </FormItem>
                   )}
@@ -233,11 +219,7 @@ export function TaskDialog({ task, open, onOpenChange, onSave, defaultStatus }: 
                   <FormItem>
                     <FormLabel>Detailed Description</FormLabel>
                     <FormControl>
-                      <Textarea 
-                        placeholder="What needs to be done?" 
-                        className="min-h-[120px] resize-none" 
-                        {...field} 
-                      />
+                      <Textarea placeholder="What needs to be done?" className="min-h-[120px] resize-none" {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -275,7 +257,6 @@ export function TaskDialog({ task, open, onOpenChange, onSave, defaultStatus }: 
                         </Button>
                       </div>
                     ))}
-                    {acceptanceCriteria.length === 0 && <p className="text-xs text-muted-foreground italic">No criteria defined.</p>}
                   </div>
                 </div>
 
@@ -309,7 +290,6 @@ export function TaskDialog({ task, open, onOpenChange, onSave, defaultStatus }: 
                         </Button>
                       </div>
                     ))}
-                    {subTasks.length === 0 && <p className="text-xs text-muted-foreground italic">No sub-tasks defined.</p>}
                   </div>
                 </div>
               </div>
