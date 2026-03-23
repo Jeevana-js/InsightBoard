@@ -37,11 +37,11 @@ import { Task, TaskStatus } from "@/types/task"
 import { generateTaskDetails } from "@/ai/flows/ai-task-description-generator"
 
 const taskSchema = z.object({
-  title: z.string().min(3, "Title must be at least 3 characters"),
+  title: z.string().min(1, "Title is required").min(3, "Title must be at least 3 characters"),
   description: z.string().optional(),
-  status: z.string(),
-  assignee: z.string().optional(),
-  dueDate: z.string().optional().or(z.literal("")),
+  status: z.string().min(1, "Status is required"),
+  assignee: z.string().min(1, "Assignee is required"),
+  dueDate: z.string().min(1, "Due Date is required"),
 })
 
 interface TaskDialogProps {
@@ -154,7 +154,7 @@ export function TaskDialog({
                   name="title"
                   render={({ field }) => (
                     <FormItem className="col-span-2">
-                      <FormLabel>Title</FormLabel>
+                      <FormLabel>Title *</FormLabel>
                       <div className="flex gap-2">
                         <FormControl>
                           <Input placeholder="e.g. Implement OAuth2 Login" {...field} />
@@ -180,7 +180,7 @@ export function TaskDialog({
                   name="status"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Status</FormLabel>
+                      <FormLabel>Status *</FormLabel>
                       <Select onValueChange={field.onChange} value={field.value}>
                         <FormControl>
                           <SelectTrigger>
@@ -203,7 +203,7 @@ export function TaskDialog({
                   name="assignee"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Assignee</FormLabel>
+                      <FormLabel>Assignee *</FormLabel>
                       <FormControl>
                         <Input placeholder="e.g. John Doe" {...field} />
                       </FormControl>
@@ -217,7 +217,7 @@ export function TaskDialog({
                   name="dueDate"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Due Date</FormLabel>
+                      <FormLabel>Due Date *</FormLabel>
                       <FormControl>
                         <Input type="date" {...field} className="w-full" />
                       </FormControl>
