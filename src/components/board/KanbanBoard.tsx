@@ -515,7 +515,12 @@ export function KanbanBoard({ userRole, username, rollNumber }: KanbanBoardProps
                   {workspaceMembers.map(member => (
                     <SelectItem key={member.id} value={member.name}>
                       <div className="flex items-center gap-2">
-                        {member.role === 'admin' && <ShieldCheck className="h-3.5 w-3.5 text-primary" />}
+                        {member.role === 'admin' && (
+                          <span className="text-[9px] font-bold text-primary border border-primary/20 bg-primary/5 px-1 rounded uppercase mr-1 flex items-center gap-1">
+                            <ShieldCheck className="h-2.5 w-2.5" />
+                            Admin
+                          </span>
+                        )}
                         {member.name}
                       </div>
                     </SelectItem>
