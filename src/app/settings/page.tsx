@@ -28,7 +28,7 @@ import { Badge } from "@/components/ui/badge"
 import { useToast } from "@/hooks/use-toast"
 import { Member } from "@/types/task"
 import { useUser, useFirestore, useDoc, useMemoFirebase } from "@/firebase"
-import { doc, updateDoc, arrayUnion } from "firebase/firestore"
+import { doc, updateDoc, arrayUnion, getDoc } from "firebase/firestore"
 
 export default function SettingsPage() {
   const [members, setMembers] = React.useState<Member[]>([])
@@ -73,7 +73,8 @@ export default function SettingsPage() {
   }
 
   const handleJoinRoom = async () => {
-    if (!joinCode.trim()) {
+    const code = joinCode.trim()
+    if (!code) {
       toast({
         variant: "destructive",
         title: "Invalid Code",
@@ -84,7 +85,19 @@ export default function SettingsPage() {
 
     setIsJoining(true)
     try {
-      const boardRef = doc(db, "boards", joinCode.trim())
+      const boardRef = doc(db, "boards", code)
+      const boardSnap = await getDoc(boardRef)
+      
+      if (!boardSnap.exists()) {
+        toast({
+          variant: "destructive",
+          title: "Not Found",
+          description: "Could not find a workspace with that code. Please check with your teacher.",
+        })
+        setIsJoining(false)
+        return
+      }
+
       await updateDoc(boardRef, {
         memberIds: arrayUnion(user?.uid)
       })
@@ -98,7 +111,7 @@ export default function SettingsPage() {
       toast({
         variant: "destructive",
         title: "Join Failed",
-        description: "Could not find a workspace with that code or permission denied.",
+        description: error.message || "Permission denied or network error.",
       })
     } finally {
       setIsJoining(false)

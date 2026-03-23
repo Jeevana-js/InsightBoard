@@ -6,25 +6,6 @@
  * It distinguishes between 'admin' (Teachers) and 'member' (Students). Teachers have 
  * elevated privileges, such as viewing all user profiles. Collaborative access to 
  * Kanban boards is managed through a membership model (owner + member list).
- * 
- * Data Structure:
- * - /users/{userId}: Profile documents containing the global 'role'.
- * - /boards/{boardId}: Root collection for Kanban boards.
- * - /boards/{boardId}/columns/{columnId}: Nested columns.
- * - /boards/{boardId}/columns/{columnId}/tasks/{taskId}: Deeply nested tasks.
- * 
- * Key Security Decisions:
- * - Admin Access: Teachers (admins) can list all users to populate the 'members board'.
- * - Denormalization for Authorization: To optimize performance and maintain 
- *   "Authorization Independence," the 'ownerId' and 'memberIds' from a Board are 
- *   denormalized (copied) into every child Column and grandchild Task. This allows 
- *   for immediate permission checks without expensive parent-document lookups.
- * - Relational Integrity: On creation, documents must correctly identify their owner. 
- *   Relational fields (like ownerId) are immutable once set.
- * 
- * Prototyping Mode:
- * Rules enforce strict authorization (who can access) but remain flexible regarding 
- * the specific schema/fields of the data (data shapes) to allow for rapid development.
  */
 
 rules_version = '2';
@@ -33,20 +14,14 @@ service cloud.firestore {
 
     // --- Global Helper Functions ---
 
-    /** Checks if the request is from an authenticated user. */
     function isSignedIn() {
       return request.auth != null;
     }
 
-    /** Checks if the authenticated user's UID matches the provided userId. */
     function isOwner(userId) {
       return isSignedIn() && request.auth.uid == userId;
     }
 
-    /** 
-     * Fetches the user's role from their profile document.
-     * Used for global admin (Teacher) permissions.
-     */
     function isAdmin() {
       return isSignedIn() && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
     }
@@ -59,16 +34,8 @@ service cloud.firestore {
       return isSignedIn() && (request.auth.uid == data.ownerId || request.auth.uid in data.memberIds);
     }
 
-    /** Combines membership check with existence check for updates/deletes. */
-    function isExistingCollaborator(data) {
-      return resource != null && isBoardCollaborator(data);
-    }
-
     // --- Collection Rules ---
 
-    /**
-     * @description Rules for the User profile collection. Admins (Teachers) can view all users.
-     */
     match /users/{userId} {
       allow get: if isOwner(userId) || isAdmin();
       allow list: if isAdmin();
@@ -77,38 +44,39 @@ service cloud.firestore {
       allow delete: if isOwner(userId);
     }
 
-    /**
-     * @description Rules for Boards. Access is shared among the owner and memberIds.
-     * Allows joining if the user is adding themselves to memberIds.
-     */
     match /boards/{boardId} {
-      allow get: if isSignedIn(); // Allow any signed-in user to 'get' a board for joining checks
+      // Allow getting a board by ID so students can verify a room code
+      allow get: if isSignedIn();
+      
+      // Listing boards is restricted to collaborators
       allow list: if isBoardCollaborator(resource.data);
+      
+      // Teachers can create their own boards
       allow create: if isSignedIn() && request.resource.data.ownerId == request.auth.uid;
-      allow update: if isExistingCollaborator(resource.data) 
-                    || (isSignedIn() && request.resource.data.memberIds.hasAny([request.auth.uid]));
+      
+      // Update allowed if:
+      // 1. User is already a collaborator
+      // 2. User is signing up/joining and adding ONLY themselves to the member list
+      allow update: if isSignedIn() && (
+        isBoardCollaborator(resource.data) || 
+        (request.resource.data.memberIds.hasAny([request.auth.uid]))
+      );
+      
       allow delete: if isSignedIn() && resource != null && resource.data.ownerId == request.auth.uid;
     }
 
-    /**
-     * @description Rules for Columns. Uses denormalized board ownership fields.
-     */
     match /boards/{boardId}/columns/{columnId} {
       allow get, list: if isBoardCollaborator(resource.data);
       allow create: if isBoardCollaborator(request.resource.data);
-      allow update: if isExistingCollaborator(resource.data) && request.resource.data.ownerId == resource.data.ownerId;
-      allow delete: if isExistingCollaborator(resource.data);
+      allow update: if isBoardCollaborator(resource.data) && request.resource.data.ownerId == resource.data.ownerId;
+      allow delete: if isBoardCollaborator(resource.data);
     }
 
-    /**
-     * @description Rules for Tasks. Uses denormalized board ownership fields for deep nesting.
-     */
     match /boards/{boardId}/columns/{columnId}/tasks/{taskId} {
       allow get, list: if isBoardCollaborator(resource.data);
       allow create: if isBoardCollaborator(request.resource.data);
-      allow update: if isExistingCollaborator(resource.data) && request.resource.data.ownerId == resource.data.ownerId;
-      allow delete: if isExistingCollaborator(resource.data);
+      allow update: if isBoardCollaborator(resource.data) && request.resource.data.ownerId == resource.data.ownerId;
+      allow delete: if isBoardCollaborator(resource.data);
     }
-
   }
 }

@@ -11,7 +11,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { useAuth, useUser, useFirestore } from "@/firebase"
 import { createUserWithEmailAndPassword, updateProfile } from "firebase/auth"
-import { doc, setDoc, arrayUnion, updateDoc } from "firebase/firestore"
+import { doc, setDoc, arrayUnion, updateDoc, getDoc } from "firebase/firestore"
 import { useToast } from "@/hooks/use-toast"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 
@@ -30,7 +30,7 @@ export default function SignupPage() {
   const router = useRouter()
   const { toast } = useToast()
 
-  const isInviteActive = formData.inviteCode.length > 5
+  const isInviteActive = formData.inviteCode.trim().length > 5
 
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -58,11 +58,8 @@ export default function SignupPage() {
       const userCredential = await createUserWithEmailAndPassword(auth, formData.email, formData.password)
       const user = userCredential.user
       
-      // Update Firebase Auth profile
       await updateProfile(user, { displayName: formData.username })
 
-      // Teachers who don't use a code can be admins. 
-      // Anyone using a code is FORCED to be a member.
       const appRole = (isInviteActive || formData.role === 'student') ? 'member' : 'admin'
       
       // 1. Create User Profile
@@ -79,7 +76,7 @@ export default function SignupPage() {
       if (appRole === 'admin') {
         await setDoc(doc(db, "boards", user.uid), {
           id: user.uid,
-          title: `${formData.username}'s Board`,
+          title: `${formData.username}'s Workspace`,
           ownerId: user.uid,
           memberIds: [],
           createdAt: new Date().toISOString(),
@@ -89,15 +86,16 @@ export default function SignupPage() {
 
       // 3. If signing up via board invite code, add user to that board
       if (isInviteActive) {
-        try {
-          // In this simple model, the invite code is the Teacher's UID (which acts as board ID)
-          const boardRef = doc(db, "boards", formData.inviteCode)
+        const targetCode = formData.inviteCode.trim()
+        const boardRef = doc(db, "boards", targetCode)
+        const boardSnap = await getDoc(boardRef)
+        
+        if (boardSnap.exists()) {
           await updateDoc(boardRef, {
             memberIds: arrayUnion(user.uid)
           })
-        } catch (boardError) {
-          console.error("Failed to add user to board", boardError)
-          // We don't block signup if the code is invalid, but the role restriction was already applied
+        } else {
+          console.warn("Invited board does not exist. Student account created but not joined.")
         }
       }
 
