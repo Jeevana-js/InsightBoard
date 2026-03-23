@@ -114,35 +114,38 @@ export default function SettingsPage() {
 
       <main className="flex-1 max-w-6xl w-full mx-auto p-6 md:p-8">
         <Tabs defaultValue="general" className="flex flex-col gap-8">
-          <div className="sticky top-20 z-40 w-full flex justify-center pb-4">
-            <TabsList className="flex h-auto bg-white/60 backdrop-blur-xl border border-white/40 p-1.5 gap-2 w-fit rounded-full shadow-[0_8px_32px_0_rgba(31,38,135,0.07)] transition-all duration-500">
-              <TabsTrigger 
-                value="general" 
-                className="gap-2 px-6 py-2 data-[state=active]:bg-primary data-[state=active]:text-white data-[state=active]:shadow-md rounded-full transition-all duration-300 font-medium"
-              >
-                <SettingsIcon className="h-4 w-4" />
-                General
-              </TabsTrigger>
-              
-              {isAdmin && (
-                <>
-                  <TabsTrigger 
-                    value="members" 
-                    className="gap-2 px-6 py-2 data-[state=active]:bg-primary data-[state=active]:text-white data-[state=active]:shadow-md rounded-full transition-all duration-300 font-medium"
-                  >
-                    <Users className="h-4 w-4" />
-                    Member Access
-                  </TabsTrigger>
-                  <TabsTrigger 
-                    value="admin" 
-                    className="gap-2 px-6 py-2 data-[state=active]:bg-primary data-[state=active]:text-white data-[state=active]:shadow-md rounded-full transition-all duration-300 font-medium"
-                  >
-                    <Shield className="h-4 w-4" />
-                    Admin Controls
-                  </TabsTrigger>
-                </>
-              )}
-            </TabsList>
+          {/* Glassmorphism Modal Navigation Container */}
+          <div className="sticky top-[73px] z-40 w-full mb-10">
+            <div className="relative mx-auto max-w-4xl p-2 rounded-2xl bg-white/40 backdrop-blur-3xl border border-white/50 shadow-[0_8px_32px_rgba(0,0,0,0.08)] flex justify-center transition-all duration-500">
+              <TabsList className="bg-transparent h-auto p-0 gap-2 flex flex-wrap justify-center border-none">
+                <TabsTrigger 
+                  value="general" 
+                  className="gap-2 px-8 py-2.5 data-[state=active]:bg-primary data-[state=active]:text-white data-[state=active]:shadow-lg rounded-xl transition-all duration-300 font-semibold text-sm"
+                >
+                  <SettingsIcon className="h-4 w-4" />
+                  General
+                </TabsTrigger>
+                
+                {isAdmin && (
+                  <>
+                    <TabsTrigger 
+                      value="members" 
+                      className="gap-2 px-8 py-2.5 data-[state=active]:bg-primary data-[state=active]:text-white data-[state=active]:shadow-lg rounded-xl transition-all duration-300 font-semibold text-sm"
+                    >
+                      <Users className="h-4 w-4" />
+                      Member Access
+                    </TabsTrigger>
+                    <TabsTrigger 
+                      value="admin" 
+                      className="gap-2 px-8 py-2.5 data-[state=active]:bg-primary data-[state=active]:text-white data-[state=active]:shadow-lg rounded-xl transition-all duration-300 font-semibold text-sm"
+                    >
+                      <Shield className="h-4 w-4" />
+                      Admin Controls
+                    </TabsTrigger>
+                  </>
+                )}
+              </TabsList>
+            </div>
           </div>
 
           <div className="max-w-4xl w-full mx-auto">
