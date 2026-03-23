@@ -67,6 +67,7 @@ export function KanbanBoard({ userRole, username, rollNumber }: KanbanBoardProps
   const [activeBoardId, setActiveBoardId] = React.useState<string | null>(null)
   const [boardData, setBoardData] = React.useState<any>(null)
   const [isAccessRevoked, setIsAccessRevoked] = React.useState(false)
+  const [isFindingBoard, setIsFindingBoard] = React.useState(true)
   
   const auth = useAuth()
   const { user } = useUser()
@@ -77,23 +78,33 @@ export function KanbanBoard({ userRole, username, rollNumber }: KanbanBoardProps
   const isAdmin = userRole === 'admin'
   const boardTitle = isAdmin ? "All Members Board" : "Project reviewer"
   
-  const roomInviteCode = activeBoardId || user?.uid || ""
+  // Important: roomInviteCode should only be displayed if a board is actually found
+  const roomInviteCode = activeBoardId || ""
 
   React.useEffect(() => {
     const findBoard = async () => {
       if (!user) return
+      setIsFindingBoard(true)
       
-      const q = query(collection(db, "boards"), where("memberIds", "array-contains", user.uid))
-      const memberSnap = await getDocs(q)
-      
-      if (!memberSnap.empty) {
-        setActiveBoardId(memberSnap.docs[0].id)
-      } else if (isAdmin) {
-        const ownBoardRef = doc(db, "boards", user.uid)
-        const ownBoardSnap = await getDoc(ownBoardRef)
-        if (ownBoardSnap.exists()) {
-          setActiveBoardId(user.uid)
+      try {
+        // 1. Check if user is a member of any board (prioritize joined workspaces)
+        const q = query(collection(db, "boards"), where("memberIds", "array-contains", user.uid))
+        const memberSnap = await getDocs(q)
+        
+        if (!memberSnap.empty) {
+          setActiveBoardId(memberSnap.docs[0].id)
+        } else if (isAdmin) {
+          // 2. If no joined boards, check if they own one
+          const ownBoardRef = doc(db, "boards", user.uid)
+          const ownBoardSnap = await getDoc(ownBoardRef)
+          if (ownBoardSnap.exists()) {
+            setActiveBoardId(user.uid)
+          }
         }
+      } catch (err) {
+        console.error("Error discovering workspace:", err)
+      } finally {
+        setIsFindingBoard(false)
       }
     }
     findBoard()
@@ -128,9 +139,10 @@ export function KanbanBoard({ userRole, username, rollNumber }: KanbanBoardProps
 
     columns.forEach(colId => {
       const baseCol = collection(db, "boards", activeBoardId, "columns", colId, "tasks")
-      const isActualOwner = user.uid === activeBoardId;
       
-      const q = isActualOwner 
+      // Determine if we should query as owner or member to satisfy security rules
+      const isBoardOwner = user.uid === activeBoardId;
+      const q = isBoardOwner 
         ? query(baseCol, where("ownerId", "==", user.uid))
         : query(baseCol, where("memberIds", "array-contains", user.uid))
 
@@ -191,6 +203,7 @@ export function KanbanBoard({ userRole, username, rollNumber }: KanbanBoardProps
   }, [boardData, db, isAccessRevoked])
 
   const copyInviteCode = () => {
+    if (!roomInviteCode) return
     navigator.clipboard.writeText(roomInviteCode)
     setHasCopied(true)
     toast({
@@ -207,6 +220,17 @@ export function KanbanBoard({ userRole, username, rollNumber }: KanbanBoardProps
     } catch (error: any) {
       toast({ variant: "destructive", title: "Logout Failed", description: error.message })
     }
+  }
+
+  if (isFindingBoard) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <div className="text-center space-y-4">
+          <Loader2 className="h-10 w-10 animate-spin text-primary mx-auto" />
+          <p className="text-muted-foreground font-medium">Syncing Workspace...</p>
+        </div>
+      </div>
+    )
   }
 
   if (isAccessRevoked) {
@@ -484,30 +508,6 @@ export function KanbanBoard({ userRole, username, rollNumber }: KanbanBoardProps
             />
           </div>
           
-          {isAdmin && (
-            <div className="flex items-center gap-2">
-              <UserIcon className="h-4 w-4 text-muted-foreground" />
-              <Select value={assigneeFilter} onValueChange={setAssigneeFilter}>
-                <SelectTrigger className="w-[200px] h-9 bg-muted/30 border-none">
-                  <SelectValue placeholder="All Assignees" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Members</SelectItem>
-                  {workspaceMembers.map(m => (
-                    <SelectItem key={m.id} value={m.name}>
-                      <div className="flex items-center justify-between w-full gap-2">
-                        <span>{m.name}</span>
-                        {m.role === 'admin' && (
-                          <Badge variant="outline" className="text-[9px] h-4 px-1 uppercase tracking-tighter opacity-70">Admin</Badge>
-                        )}
-                      </div>
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          )}
-
           <div className="flex bg-muted/30 p-1 rounded-md ml-auto border shadow-sm">
             <Button 
               variant="ghost" 

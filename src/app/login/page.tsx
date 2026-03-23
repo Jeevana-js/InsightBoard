@@ -12,7 +12,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { useAuth, useUser, useFirestore } from "@/firebase"
 import { signInWithEmailAndPassword, GoogleAuthProvider, signInWithPopup, updateProfile, User } from "firebase/auth"
-import { doc, getDoc, setDoc, updateDoc, arrayUnion } from "firebase/firestore"
+import { doc, getDoc, setDoc, updateDoc, arrayUnion, collection, query, where, getDocs } from "firebase/firestore"
 import { useToast } from "@/hooks/use-toast"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 
@@ -21,7 +21,7 @@ export default function LoginPage() {
   const [password, setPassword] = React.useState("")
   const [isLoading, setIsLoading] = React.useState(false)
   
-  // Onboarding state for new Google users
+  // Onboarding state for new users or incomplete profiles
   const [showRoleSelection, setShowRoleSelection] = React.useState(false)
   const [tempGoogleUser, setTempGoogleUser] = React.useState<User | null>(null)
   const [onboardingData, setOnboardingData] = React.useState({
@@ -73,17 +73,36 @@ export default function LoginPage() {
       const result = await signInWithPopup(auth, provider)
       const user = result.user
 
+      // Check if user profile already exists
       const userDoc = await getDoc(doc(db, "users", user.uid))
       
       if (userDoc.exists()) {
         router.push("/")
       } else {
-        setTempGoogleUser(user)
-        setOnboardingData(prev => ({
-          ...prev,
-          username: user.displayName || ""
-        }))
-        setShowRoleSelection(true)
+        // New user: check if they are already in a board (invited via email etc)
+        const q = query(collection(db, "boards"), where("memberIds", "array-contains", user.uid))
+        const memberSnap = await getDocs(q)
+        
+        if (!memberSnap.empty) {
+          // They are already a member, create profile automatically
+          await setDoc(doc(db, "users", user.uid), {
+            id: user.uid,
+            username: user.displayName || "User",
+            email: user.email,
+            rollNumber: "PENDING",
+            role: 'member',
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString()
+          })
+          router.push("/")
+        } else {
+          setTempGoogleUser(user)
+          setOnboardingData(prev => ({
+            ...prev,
+            username: user.displayName || ""
+          }))
+          setShowRoleSelection(true)
+        }
       }
     } catch (error: any) {
       toast({
@@ -126,19 +145,23 @@ export default function LoginPage() {
         updatedAt: new Date().toISOString()
       })
 
-      // 2. If Teacher, create workspace
+      // 2. If Teacher, create workspace ONLY if it doesn't exist
       if (appRole === 'admin') {
-        await setDoc(doc(db, "boards", user.uid), {
-          id: user.uid,
-          title: `${onboardingData.username}'s Workspace`,
-          ownerId: user.uid,
-          memberIds: [],
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString()
-        })
+        const boardRef = doc(db, "boards", user.uid)
+        const boardSnap = await getDoc(boardRef)
+        if (!boardSnap.exists()) {
+          await setDoc(boardRef, {
+            id: user.uid,
+            title: `${onboardingData.username}'s Workspace`,
+            ownerId: user.uid,
+            memberIds: [],
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString()
+          })
+        }
       }
 
-      // 3. Join via code
+      // 3. Join via code if provided
       if (isInviteActive) {
         const targetCode = onboardingData.inviteCode.trim()
         const boardRef = doc(db, "boards", targetCode)
@@ -223,7 +246,7 @@ export default function LoginPage() {
                 </div>
               </div>
 
-              {onboardingData.inviteCode.trim().length <= 5 ? (
+              {!onboardingData.inviteCode.trim() ? (
                 <div className="space-y-2">
                   <Label htmlFor="role">Your Role</Label>
                   <Select 
