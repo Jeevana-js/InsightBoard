@@ -329,19 +329,6 @@ export function KanbanBoard({ userRole, username }: KanbanBoardProps) {
                 showAddButton={index === 0}
               />
             ))}
-            {columns.length < 10 && (
-              <Button 
-                variant="ghost" 
-                className="h-fit py-4 px-8 border-2 border-dashed border-muted text-muted-foreground hover:border-accent hover:text-accent transition-all rounded-xl"
-                onClick={() => {
-                  const newName = `Phase ${columns.length + 1}`
-                  setColumns([...columns, newName])
-                }}
-              >
-                <Plus className="h-4 w-4 mr-2" />
-                Add Column
-              </Button>
-            )}
           </div>
         ) : (
           <div className="max-w-6xl mx-auto">
