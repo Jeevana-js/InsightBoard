@@ -138,7 +138,12 @@ export function TaskDialog({
               <span className="text-xs font-normal text-muted-foreground ml-2">ID: {task?.id || 'NEW'}</span>
             </div>
             {task && (
-              <Button variant="ghost" size="icon" className="text-destructive hover:bg-destructive/10" onClick={handleDelete}>
+              <Button 
+                variant="ghost" 
+                size="icon" 
+                className="text-destructive hover:text-destructive hover:bg-destructive/10 transition-colors" 
+                onClick={handleDelete}
+              >
                 <Trash2 className="h-4 w-4" />
               </Button>
             )}

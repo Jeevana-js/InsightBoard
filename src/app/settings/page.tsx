@@ -109,7 +109,7 @@ export default function SettingsPage() {
           </Button>
         </div>
         <div className="flex justify-center">
-          <h1 className="text-xl font-bold tracking-tight whitespace-nowrap">Board Settings</h1>
+          <h1 className="text-xl font-bold tracking-tight whitespace-nowrap text-center">Board Settings</h1>
         </div>
         <div className="flex justify-end">
           {/* Empty div to balance the grid columns */}
@@ -275,7 +275,7 @@ export default function SettingsPage() {
                                   <Button 
                                     variant="ghost" 
                                     size="icon" 
-                                    className="h-8 w-8 text-destructive hover:bg-destructive/10"
+                                    className="h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/10 transition-colors"
                                     onClick={() => handleDeleteMember(member.id)}
                                     disabled={member.id === user?.uid}
                                   >
