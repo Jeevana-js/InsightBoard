@@ -1,4 +1,3 @@
-
 "use client"
 
 import * as React from "react"
@@ -73,7 +72,6 @@ export default function SignupPage() {
 
       const appRole = (isInviteActive || formData.role === 'student') ? 'member' : 'admin'
       
-      // 1. Create User Profile
       await setDoc(doc(db, "users", user.uid), {
         id: user.uid,
         username: formData.username,
@@ -84,7 +82,6 @@ export default function SignupPage() {
         updatedAt: new Date().toISOString()
       })
 
-      // 2. If the user is a Teacher (admin), create their workspace board
       if (appRole === 'admin') {
         await setDoc(doc(db, "boards", user.uid), {
           id: user.uid,
@@ -96,7 +93,6 @@ export default function SignupPage() {
         })
       }
 
-      // 3. If signing up via board invite code, add user to that board
       if (isInviteActive) {
         const targetCode = formData.inviteCode.trim()
         const boardRef = doc(db, "boards", targetCode)
@@ -111,7 +107,7 @@ export default function SignupPage() {
 
       toast({
         title: "Account Created Successfully",
-        description: `Welcome to SprintSync, ${formData.username}!`,
+        description: `Welcome to InsightBoard, ${formData.username}!`,
       })
       router.push("/")
     } catch (error: any) {
@@ -136,7 +132,7 @@ export default function SignupPage() {
           </div>
           <CardTitle className="text-2xl font-bold tracking-tight">Create Your Account</CardTitle>
           <CardDescription>
-            Join the elite agile community on SprintSync
+            Join the elite agile community on InsightBoard
           </CardDescription>
         </CardHeader>
         <CardContent>

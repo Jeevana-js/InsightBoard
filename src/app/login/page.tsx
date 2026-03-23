@@ -1,4 +1,3 @@
-
 "use client"
 
 import * as React from "react"
@@ -21,7 +20,6 @@ export default function LoginPage() {
   const [password, setPassword] = React.useState("")
   const [isLoading, setIsLoading] = React.useState(false)
   
-  // Onboarding state for new users or incomplete profiles
   const [showRoleSelection, setShowRoleSelection] = React.useState(false)
   const [tempGoogleUser, setTempGoogleUser] = React.useState<User | null>(null)
   const [onboardingData, setOnboardingData] = React.useState({
@@ -73,18 +71,15 @@ export default function LoginPage() {
       const result = await signInWithPopup(auth, provider)
       const user = result.user
 
-      // Check if user profile already exists
       const userDoc = await getDoc(doc(db, "users", user.uid))
       
       if (userDoc.exists()) {
         router.push("/")
       } else {
-        // New user: check if they are already in a board (invited via email etc)
         const q = query(collection(db, "boards"), where("memberIds", "array-contains", user.uid))
         const memberSnap = await getDocs(q)
         
         if (!memberSnap.empty) {
-          // They are already a member, create profile automatically
           await setDoc(doc(db, "users", user.uid), {
             id: user.uid,
             username: user.displayName || "User",
@@ -134,7 +129,6 @@ export default function LoginPage() {
         await updateProfile(user, { displayName: onboardingData.username })
       }
 
-      // 1. Create User Profile
       await setDoc(doc(db, "users", user.uid), {
         id: user.uid,
         username: onboardingData.username,
@@ -145,7 +139,6 @@ export default function LoginPage() {
         updatedAt: new Date().toISOString()
       })
 
-      // 2. If Teacher, create workspace ONLY if it doesn't exist
       if (appRole === 'admin') {
         const boardRef = doc(db, "boards", user.uid)
         const boardSnap = await getDoc(boardRef)
@@ -161,7 +154,6 @@ export default function LoginPage() {
         }
       }
 
-      // 3. Join via code if provided
       if (isInviteActive) {
         const targetCode = onboardingData.inviteCode.trim()
         const boardRef = doc(db, "boards", targetCode)
@@ -176,7 +168,7 @@ export default function LoginPage() {
 
       toast({
         title: "Profile Setup Complete",
-        description: `Welcome to SprintSync, ${onboardingData.username}!`,
+        description: `Welcome to InsightBoard, ${onboardingData.username}!`,
       })
       router.push("/")
     } catch (error: any) {
@@ -202,7 +194,7 @@ export default function LoginPage() {
             </div>
             <CardTitle className="text-2xl font-bold tracking-tight">Complete Your Profile</CardTitle>
             <CardDescription>
-              Tell us how you'll be using SprintSync
+              Tell us how you'll be using InsightBoard
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -304,7 +296,7 @@ export default function LoginPage() {
           </div>
           <CardTitle className="text-2xl font-bold tracking-tight">Welcome Back</CardTitle>
           <CardDescription>
-            Enter your credentials to access your SprintSync Board
+            Enter your credentials to access your InsightBoard
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">

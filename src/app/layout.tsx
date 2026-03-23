@@ -4,7 +4,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { FirebaseClientProvider } from '@/firebase/client-provider';
 
 export const metadata: Metadata = {
-  title: 'SprintSync Board - Modern Agile Management',
+  title: 'InsightBoard - Modern Agile Management',
   description: 'AI-powered Kanban board for elite engineering teams.',
 };
 
