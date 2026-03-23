@@ -38,6 +38,11 @@ import { signOut } from "firebase/auth"
 import { Badge } from "@/components/ui/badge"
 import { doc, getDoc, collection, query, where, getDocs } from "firebase/firestore"
 
+interface WorkspaceMember {
+  name: string
+  role: string
+}
+
 export function KanbanBoard({ userRole, username }: KanbanBoardProps) {
   const [tasks, setTasks] = React.useState<Task[]>([])
   const [columns, setColumns] = React.useState<string[]>(INITIAL_COLUMNS)
@@ -48,7 +53,7 @@ export function KanbanBoard({ userRole, username }: KanbanBoardProps) {
   const [selectedTask, setSelectedTask] = React.useState<Task | undefined>()
   const [activeStatus, setActiveStatus] = React.useState<TaskStatus | undefined>()
   const [hasCopied, setHasCopied] = React.useState(false)
-  const [workspaceMembers, setWorkspaceMembers] = React.useState<string[]>([])
+  const [workspaceMembers, setWorkspaceMembers] = React.useState<WorkspaceMember[]>([])
   
   const auth = useAuth()
   const { user } = useUser()
@@ -76,7 +81,7 @@ export function KanbanBoard({ userRole, username }: KanbanBoardProps) {
           if (!qSnap.empty) {
             targetBoardId = qSnap.docs[0].id;
           } else {
-             setWorkspaceMembers([username || user.displayName || "User"])
+             setWorkspaceMembers([{ name: username || user.displayName || "User", role: userRole || 'member' }])
              return;
           }
         }
@@ -87,15 +92,19 @@ export function KanbanBoard({ userRole, username }: KanbanBoardProps) {
         if (boardSnap.exists()) {
           const bData = boardSnap.data();
           const allMemberIds = Array.from(new Set([bData.ownerId, ...(bData.memberIds || [])]));
-          const memberNames: string[] = [];
+          const membersList: WorkspaceMember[] = [];
           
           for (const mId of allMemberIds) {
             const uDoc = await getDoc(doc(db, "users", mId));
             if (uDoc.exists()) {
-              memberNames.push(uDoc.data().username || "User");
+              const uData = uDoc.data();
+              membersList.push({
+                name: uData.username || "User",
+                role: uData.role || "member"
+              });
             }
           }
-          setWorkspaceMembers(memberNames);
+          setWorkspaceMembers(membersList);
         }
       } catch (err) {
         console.error("Error loading board members", err)
@@ -200,6 +209,8 @@ export function KanbanBoard({ userRole, username }: KanbanBoardProps) {
       toast({ variant: "destructive", title: "Logout Failed", description: error.message })
     }
   }
+
+  const memberNames = workspaceMembers.map(m => m.name);
 
   return (
     <div className="flex flex-col h-screen overflow-hidden bg-background">
@@ -313,13 +324,20 @@ export function KanbanBoard({ userRole, username }: KanbanBoardProps) {
             <div className="flex items-center gap-2">
               <UserIcon className="h-4 w-4 text-muted-foreground" />
               <Select value={assigneeFilter} onValueChange={setAssigneeFilter}>
-                <SelectTrigger className="w-[180px] h-9 bg-muted/30 border-none">
+                <SelectTrigger className="w-[200px] h-9 bg-muted/30 border-none">
                   <SelectValue placeholder="All Assignees" />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">All Members</SelectItem>
                   {workspaceMembers.map(m => (
-                    <SelectItem key={m} value={m}>{m}</SelectItem>
+                    <SelectItem key={m.name} value={m.name}>
+                      <div className="flex items-center justify-between w-full gap-2">
+                        <span>{m.name}</span>
+                        {m.role === 'admin' && (
+                          <Badge variant="outline" className="text-[9px] h-4 px-1 uppercase tracking-tighter opacity-70">Admin</Badge>
+                        )}
+                      </div>
+                    </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
@@ -386,7 +404,7 @@ export function KanbanBoard({ userRole, username }: KanbanBoardProps) {
         defaultStatus={activeStatus}
         currentUsername={username || undefined}
         columnOptions={columns}
-        memberOptions={workspaceMembers}
+        memberOptions={memberNames}
       />
     </div>
   )
