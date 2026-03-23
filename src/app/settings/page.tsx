@@ -2,7 +2,7 @@
 
 import * as React from "react"
 import Link from "next/link"
-import { ChevronLeft, Shield, Users, Settings as SettingsIcon, Trash2, UserPlus, Copy, Check, Hash, Loader2 } from "lucide-react"
+import { ChevronLeft, Shield, Users, Settings as SettingsIcon, Trash2, UserPlus, Copy, Check, Hash, Loader2, DoorOpen } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -28,11 +28,13 @@ import { Badge } from "@/components/ui/badge"
 import { useToast } from "@/hooks/use-toast"
 import { Member } from "@/types/task"
 import { useUser, useFirestore, useDoc, useMemoFirebase } from "@/firebase"
-import { doc } from "firebase/firestore"
+import { doc, updateDoc, arrayUnion } from "firebase/firestore"
 
 export default function SettingsPage() {
   const [members, setMembers] = React.useState<Member[]>([])
   const [hasCopied, setHasCopied] = React.useState(false)
+  const [joinCode, setJoinCode] = React.useState("")
+  const [isJoining, setIsJoining] = React.useState(false)
   
   const { user } = useUser()
   const db = useFirestore()
@@ -68,6 +70,39 @@ export default function SettingsPage() {
       description: "Room code ready to share with students.",
     })
     setTimeout(() => setHasCopied(false), 2000)
+  }
+
+  const handleJoinRoom = async () => {
+    if (!joinCode.trim()) {
+      toast({
+        variant: "destructive",
+        title: "Invalid Code",
+        description: "Please enter a valid room invitation code.",
+      })
+      return
+    }
+
+    setIsJoining(true)
+    try {
+      const boardRef = doc(db, "boards", joinCode.trim())
+      await updateDoc(boardRef, {
+        memberIds: arrayUnion(user?.uid)
+      })
+      
+      toast({
+        title: "Workspace Joined",
+        description: "You have successfully joined the teacher's board.",
+      })
+      setJoinCode("")
+    } catch (error: any) {
+      toast({
+        variant: "destructive",
+        title: "Join Failed",
+        description: "Could not find a workspace with that code or permission denied.",
+      })
+    } finally {
+      setIsJoining(false)
+    }
   }
 
   const handleUpdateRole = (memberId: string, newRole: 'Admin' | 'Member') => {
@@ -109,7 +144,7 @@ export default function SettingsPage() {
           </Button>
         </div>
         <div className="flex justify-center">
-          <h1 className="text-xl font-bold tracking-tight whitespace-nowrap text-center">Board Settings</h1>
+          <h1 className="text-xl font-bold tracking-tight whitespace-nowrap text-center text-slate-900">Board Settings</h1>
         </div>
         <div className="flex justify-end">
           {/* Empty div to balance the grid columns */}
@@ -118,7 +153,6 @@ export default function SettingsPage() {
 
       <main className="flex-1 max-w-6xl w-full mx-auto p-6 md:p-8">
         <Tabs defaultValue="general" className="flex flex-col gap-8">
-          {/* Glassmorphism Modal Navigation Container */}
           <div className="sticky top-[73px] z-40 w-full mb-10">
             <div className="relative mx-auto max-w-4xl p-2 rounded-2xl bg-white/40 backdrop-blur-3xl border border-white/50 shadow-[0_8px_32px_rgba(0,0,0,0.08)] flex justify-center transition-all duration-500">
               <TabsList className="bg-transparent h-auto p-0 gap-2 flex flex-wrap justify-center border-none">
@@ -185,7 +219,7 @@ export default function SettingsPage() {
                 </CardContent>
               </Card>
 
-              {isAdmin && (
+              {isAdmin ? (
                 <Card className="border-none bg-accent/5 overflow-hidden shadow-sm ring-1 ring-accent/20">
                   <div className="h-1 bg-accent w-full" />
                   <CardHeader>
@@ -212,6 +246,33 @@ export default function SettingsPage() {
                       <p className="text-[11px] text-accent font-medium leading-relaxed">
                         <strong>Teacher Security:</strong> Users signing up with this code are restricted to the <strong>Student Member</strong> role.
                       </p>
+                    </div>
+                  </CardContent>
+                </Card>
+              ) : (
+                <Card className="border-none bg-primary/5 overflow-hidden shadow-sm ring-1 ring-primary/20">
+                  <div className="h-1 bg-primary w-full" />
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <DoorOpen className="h-5 w-5 text-primary" />
+                      Join a Workspace
+                    </CardTitle>
+                    <CardDescription>
+                      Enter a room invitation code provided by your teacher to join their board.
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-4 pb-6">
+                    <div className="flex gap-2">
+                      <Input 
+                        placeholder="Enter room code..." 
+                        value={joinCode}
+                        onChange={(e) => setJoinCode(e.target.value)}
+                        className="bg-white border font-code text-sm tracking-wider text-center h-12 text-slate-950"
+                      />
+                      <Button onClick={handleJoinRoom} disabled={isJoining || !joinCode} className="h-12 px-6">
+                        {isJoining ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <UserPlus className="h-4 w-4 mr-2" />}
+                        Join Room
+                      </Button>
                     </div>
                   </CardContent>
                 </Card>
