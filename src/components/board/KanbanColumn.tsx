@@ -1,11 +1,19 @@
+
 "use client"
 
 import * as React from "react"
-import { Plus, MoreHorizontal } from "lucide-react"
+import { Plus, MoreHorizontal, Pencil, Trash2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Task, TaskStatus } from "@/types/task"
 import { TaskCard } from "./TaskCard"
 import { cn } from "@/lib/utils"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
+import { useToast } from "@/hooks/use-toast"
 
 interface KanbanColumnProps {
   status: TaskStatus
@@ -17,6 +25,7 @@ interface KanbanColumnProps {
 
 export function KanbanColumn({ status, tasks, onAddTask, onTaskClick, onDropTask }: KanbanColumnProps) {
   const [isOver, setIsOver] = React.useState(false)
+  const { toast } = useToast()
 
   const handleDragOver = (e: React.DragEvent) => {
     e.preventDefault()
@@ -36,6 +45,21 @@ export function KanbanColumn({ status, tasks, onAddTask, onTaskClick, onDropTask
 
   const handleDragStart = (e: React.DragEvent, taskId: string) => {
     e.dataTransfer.setData("taskId", taskId)
+  }
+
+  const handleEditColumn = () => {
+    toast({
+      title: "Edit Column",
+      description: `Feature to rename "${status}" is coming soon.`,
+    })
+  }
+
+  const handleDeleteColumn = () => {
+    toast({
+      variant: "destructive",
+      title: "Delete Column",
+      description: `Column "${status}" cannot be deleted while it contains active tasks.`,
+    })
   }
 
   return (
@@ -59,9 +83,24 @@ export function KanbanColumn({ status, tasks, onAddTask, onTaskClick, onDropTask
           <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => onAddTask(status)}>
             <Plus className="h-4 w-4" />
           </Button>
-          <Button variant="ghost" size="icon" className="h-7 w-7">
-            <MoreHorizontal className="h-4 w-4" />
-          </Button>
+          
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" size="icon" className="h-7 w-7">
+                <MoreHorizontal className="h-4 w-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem onClick={handleEditColumn} className="gap-2 cursor-pointer">
+                <Pencil className="h-4 w-4" />
+                Edit Column
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={handleDeleteColumn} className="gap-2 cursor-pointer text-destructive focus:text-destructive">
+                <Trash2 className="h-4 w-4" />
+                Delete Column
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
       </div>
 
