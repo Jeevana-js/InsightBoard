@@ -1,9 +1,10 @@
+
 "use client"
 
 import * as React from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
-import { Search, Plus, LayoutGrid, List, SlidersHorizontal, User as UserIcon, LogOut, ShieldCheck } from "lucide-react"
+import { Search, Plus, LayoutGrid, List, SlidersHorizontal, User as UserIcon, LogOut, ShieldCheck, Share2, Copy, Check } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { 
@@ -21,13 +22,18 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover"
 import { KanbanColumn } from "./KanbanColumn"
 import { TaskListView } from "./TaskListView"
 import { TaskDialog } from "@/components/task/TaskDialog"
 import { Task, TaskStatus, COLUMNS, TEAM_MEMBERS } from "@/types/task"
 import { useToast } from "@/hooks/use-toast"
 import { cn } from "@/lib/utils"
-import { useAuth } from "@/firebase"
+import { useAuth, useUser } from "@/firebase"
 import { signOut } from "firebase/auth"
 import { Badge } from "@/components/ui/badge"
 
@@ -82,8 +88,10 @@ export function KanbanBoard({ userRole, username }: KanbanBoardProps) {
   const [isTaskDialogOpen, setIsTaskDialogOpen] = React.useState(false)
   const [selectedTask, setSelectedTask] = React.useState<Task | undefined>()
   const [activeStatus, setActiveStatus] = React.useState<TaskStatus | undefined>()
+  const [hasCopied, setHasCopied] = React.useState(false)
   
   const auth = useAuth()
+  const { user } = useUser()
   const router = useRouter()
   const { toast } = useToast()
 
@@ -93,6 +101,23 @@ export function KanbanBoard({ userRole, username }: KanbanBoardProps) {
 
   const isAdmin = userRole === 'admin'
   const boardTitle = isAdmin ? "All Members Board" : "My Workspace"
+  
+  // Use user.uid as a mock room ID for this prototype
+  const roomInviteLink = React.useMemo(() => {
+    if (typeof window === "undefined") return ""
+    const origin = window.location.origin
+    return `${origin}/signup?boardId=${user?.uid || 'main-room'}`
+  }, [user])
+
+  const copyInviteLink = () => {
+    navigator.clipboard.writeText(roomInviteLink)
+    setHasCopied(true)
+    toast({
+      title: "Invite Link Copied",
+      description: "Students can now use this link to join your room as Members.",
+    })
+    setTimeout(() => setHasCopied(false), 2000)
+  }
 
   const filteredTasks = tasks.filter(task => {
     const matchesSearch = task.title.toLowerCase().includes(searchQuery.toLowerCase()) || 
@@ -172,6 +197,43 @@ export function KanbanBoard({ userRole, username }: KanbanBoardProps) {
             </div>
           </div>
           <div className="flex items-center gap-3">
+            {isAdmin && (
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button variant="outline" className="border-accent text-accent hover:bg-accent/5">
+                    <Share2 className="h-4 w-4 mr-2" />
+                    Invite Students
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-80 p-4 shadow-xl border-accent/20">
+                  <div className="space-y-4">
+                    <div className="space-y-1">
+                      <h4 className="text-sm font-bold flex items-center gap-2">
+                        <LinkIcon className="h-3 w-3" />
+                        Room Invite Link
+                      </h4>
+                      <p className="text-[10px] text-muted-foreground">
+                        Students using this link are forced to sign up as <strong>Members</strong> only.
+                      </p>
+                    </div>
+                    <div className="flex gap-2">
+                      <Input 
+                        readOnly 
+                        value={roomInviteLink} 
+                        className="h-8 text-[10px] bg-muted/50 border-none"
+                      />
+                      <Button size="icon" variant="ghost" className="h-8 w-8 shrink-0" onClick={copyInviteLink}>
+                        {hasCopied ? <Check className="h-4 w-4 text-emerald-500" /> : <Copy className="h-4 w-4" />}
+                      </Button>
+                    </div>
+                    <p className="text-[9px] italic text-muted-foreground text-center">
+                      Security: Teachers cannot be created via invite links.
+                    </p>
+                  </div>
+                </PopoverContent>
+              </Popover>
+            )}
+
             <Button onClick={() => handleAddTask('New')} className="bg-primary hover:bg-primary/90">
               <Plus className="h-4 w-4 mr-2" />
               New Task

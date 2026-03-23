@@ -1,9 +1,10 @@
+
 "use client"
 
 import * as React from "react"
 import Link from "next/link"
-import { useRouter } from "next/navigation"
-import { LayoutGrid, Mail, Lock, User, Loader2, GraduationCap, Briefcase, CheckCircle2 } from "lucide-react"
+import { useRouter, useSearchParams } from "next/navigation"
+import { LayoutGrid, Mail, Lock, User, Loader2, GraduationCap, Briefcase, CheckCircle2, Link as LinkIcon } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -11,22 +12,33 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { useAuth, useFirestore } from "@/firebase"
 import { createUserWithEmailAndPassword, updateProfile } from "firebase/auth"
-import { doc, setDoc } from "firebase/firestore"
+import { doc, setDoc, arrayUnion, updateDoc } from "firebase/firestore"
 import { useToast } from "@/hooks/use-toast"
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 
 export default function SignupPage() {
+  const searchParams = useSearchParams()
+  const boardId = searchParams.get('boardId')
+  
   const [formData, setFormData] = React.useState({
     username: "",
     email: "",
     password: "",
     confirmPassword: "",
-    role: "student" as "teacher" | "student"
+    role: (boardId ? "student" : "student") as "teacher" | "student"
   })
   const [isLoading, setIsLoading] = React.useState(false)
   const auth = useAuth()
   const db = useFirestore()
   const router = useRouter()
   const { toast } = useToast()
+
+  // If there's a boardId, we force the role to student
+  React.useEffect(() => {
+    if (boardId) {
+      setFormData(prev => ({ ...prev, role: "student" }))
+    }
+  }, [boardId])
 
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -60,6 +72,7 @@ export default function SignupPage() {
       // Teacher -> Admin, Student -> Member
       const appRole = formData.role === 'teacher' ? 'admin' : 'member'
       
+      // 1. Create User Profile
       await setDoc(doc(db, "users", user.uid), {
         id: user.uid,
         username: formData.username,
@@ -68,6 +81,19 @@ export default function SignupPage() {
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString()
       })
+
+      // 2. If signing up via board invite, add user to that board
+      if (boardId) {
+        try {
+          const boardRef = doc(db, "boards", boardId)
+          await updateDoc(boardRef, {
+            memberIds: arrayUnion(user.uid)
+          })
+        } catch (boardError) {
+          console.error("Failed to add user to board", boardError)
+          // Don't fail the whole signup if board link fails, just alert the user
+        }
+      }
 
       toast({
         title: "Account Created Successfully",
@@ -100,6 +126,16 @@ export default function SignupPage() {
           </CardDescription>
         </CardHeader>
         <CardContent>
+          {boardId && (
+            <Alert className="mb-6 border-accent/20 bg-accent/5">
+              <LinkIcon className="h-4 w-4 text-accent" />
+              <AlertTitle className="text-xs font-bold uppercase tracking-wider text-accent">Room Invite Active</AlertTitle>
+              <AlertDescription className="text-xs">
+                You are joining a Teacher's workspace. Your role is restricted to <strong>Student Member</strong>.
+              </AlertDescription>
+            </Alert>
+          )}
+
           <form onSubmit={handleSignup} className="space-y-4">
             <div className="space-y-2">
               <Label htmlFor="username">Username</Label>
@@ -135,8 +171,9 @@ export default function SignupPage() {
             <div className="space-y-2">
               <Label htmlFor="role">What is your role?</Label>
               <Select 
-                defaultValue="student" 
+                value={formData.role}
                 onValueChange={(val) => setFormData({...formData, role: val as any})}
+                disabled={!!boardId}
               >
                 <SelectTrigger className="w-full">
                   <SelectValue placeholder="Select your role" />
@@ -148,17 +185,25 @@ export default function SignupPage() {
                       Student (Assigns as Member)
                     </div>
                   </SelectItem>
-                  <SelectItem value="teacher">
-                    <div className="flex items-center">
-                      <Briefcase className="h-4 w-4 mr-2 text-primary" />
-                      Teacher (Assigns as Admin)
-                    </div>
-                  </SelectItem>
+                  {!boardId && (
+                    <SelectItem value="teacher">
+                      <div className="flex items-center">
+                        <Briefcase className="h-4 w-4 mr-2 text-primary" />
+                        Teacher (Assigns as Admin)
+                      </div>
+                    </SelectItem>
+                  )}
                 </SelectContent>
               </Select>
-              <p className="text-[10px] text-muted-foreground italic px-1">
-                Teachers receive administrative control over all member boards.
-              </p>
+              {boardId ? (
+                <p className="text-[10px] text-accent font-medium italic px-1">
+                  Role locked to Student for room security.
+                </p>
+              ) : (
+                <p className="text-[10px] text-muted-foreground italic px-1">
+                  Teachers receive administrative control over all member boards.
+                </p>
+              )}
             </div>
 
             <div className="grid grid-cols-2 gap-4">
@@ -198,7 +243,7 @@ export default function SignupPage() {
               ) : (
                 <CheckCircle2 className="h-4 w-4 mr-2" />
               )}
-              Create Account
+              {boardId ? "Join Room & Create Account" : "Create Account"}
             </Button>
           </form>
         </CardContent>
