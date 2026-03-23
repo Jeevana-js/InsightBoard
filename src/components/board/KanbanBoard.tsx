@@ -69,20 +69,25 @@ export function KanbanBoard({ userRole, username }: KanbanBoardProps) {
   const isAdmin = userRole === 'admin'
   const boardTitle = isAdmin ? "All Members Board" : "Project reviewer"
   
-  const roomInviteCode = user?.uid || ""
+  const roomInviteCode = activeBoardId || user?.uid || ""
 
-  // 1. Find the active board ID
+  // 1. Find the active board ID - prioritize shared board access
   React.useEffect(() => {
     const findBoard = async () => {
       if (!user) return
-      if (isAdmin) {
-        setActiveBoardId(user.uid)
-      } else {
-        // Students find boards they are members of
-        const q = query(collection(db, "boards"), where("memberIds", "array-contains", user.uid))
-        const snap = await getDocs(q)
-        if (!snap.empty) {
-          setActiveBoardId(snap.docs[0].id)
+      
+      // Always check for boards where I am a member first
+      const q = query(collection(db, "boards"), where("memberIds", "array-contains", user.uid))
+      const memberSnap = await getDocs(q)
+      
+      if (!memberSnap.empty) {
+        setActiveBoardId(memberSnap.docs[0].id)
+      } else if (isAdmin) {
+        // If not a member, check if I own a board (Teachers)
+        const ownBoardRef = doc(db, "boards", user.uid)
+        const ownBoardSnap = await getDoc(ownBoardRef)
+        if (ownBoardSnap.exists()) {
+          setActiveBoardId(user.uid)
         }
       }
     }
@@ -109,11 +114,11 @@ export function KanbanBoard({ userRole, username }: KanbanBoardProps) {
     columns.forEach(colId => {
       const baseCol = collection(db, "boards", activeBoardId, "columns", colId, "tasks")
       
-      // Query-Accurate Permissions (QAP): 
-      // Firestore rules require queries to have filters that match the authorization logic 
-      // when rules depend on resource data fields.
+      // Query-Accurate Permissions (QAP):
+      // Even Admins should filter by ownerId or memberIds to satisfy security rules 
+      // which enforce path-based and data-based access.
       const q = isAdmin 
-        ? query(baseCol, where("ownerId", "==", user.uid))
+        ? query(baseCol, where("ownerId", "==", boardData?.ownerId || user.uid))
         : query(baseCol, where("memberIds", "array-contains", user.uid))
 
       const unsub = onSnapshot(q, 
@@ -127,7 +132,6 @@ export function KanbanBoard({ userRole, username }: KanbanBoardProps) {
           })
         },
         async (serverError) => {
-          // Handle permission error via central error architecture
           const permissionError = new FirestorePermissionError({
             path: `boards/${activeBoardId}/columns/${colId}/tasks`,
             operation: 'list',
@@ -139,7 +143,7 @@ export function KanbanBoard({ userRole, username }: KanbanBoardProps) {
     })
 
     return () => unsubscribes.forEach(unsub => unsub())
-  }, [activeBoardId, columns, db, isAdmin, user])
+  }, [activeBoardId, columns, db, isAdmin, user, boardData])
 
   // 4. Fetch workspace members for filtering (Admin only)
   React.useEffect(() => {
@@ -209,7 +213,6 @@ export function KanbanBoard({ userRole, username }: KanbanBoardProps) {
 
     const taskRef = doc(db, "boards", activeBoardId, "columns", newTask.status, "tasks", newTask.id)
     
-    // If updating and status changed, we need to delete from the old column subcollection
     if (selectedTask && selectedTask.status !== newTask.status) {
       const oldRef = doc(db, "boards", activeBoardId, "columns", selectedTask.status, "tasks", selectedTask.id)
       deleteDoc(oldRef).catch(async (err) => {
@@ -271,7 +274,6 @@ export function KanbanBoard({ userRole, username }: KanbanBoardProps) {
 
     const updatedTask = { ...task, status: targetStatus }
     
-    // Move between subcollections
     setDoc(newRef, updatedTask).catch(async (err) => {
       errorEmitter.emit('permission-error', new FirestorePermissionError({
         path: newRef.path,

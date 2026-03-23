@@ -29,7 +29,7 @@ import { Badge } from "@/components/ui/badge"
 import { useToast } from "@/hooks/use-toast"
 import { Member } from "@/types/task"
 import { useUser, useFirestore, useDoc, useMemoFirebase } from "@/firebase"
-import { doc, updateDoc, arrayUnion, getDoc, collection, query, where, getDocs } from "firebase/firestore"
+import { doc, updateDoc, arrayUnion, getDoc, collection, query, where, getDocs, arrayRemove } from "firebase/firestore"
 
 export default function SettingsPage() {
   const [members, setMembers] = React.useState<Member[]>([])
@@ -37,6 +37,7 @@ export default function SettingsPage() {
   const [joinCode, setJoinCode] = React.useState("")
   const [isJoining, setIsJoining] = React.useState(false)
   const [isMembersLoading, setIsMembersLoading] = React.useState(false)
+  const [activeBoardId, setActiveBoardId] = React.useState<string | null>(null)
   
   const { user } = useUser()
   const db = useFirestore()
@@ -51,16 +52,37 @@ export default function SettingsPage() {
 
   const isAdmin = profile?.role === 'admin'
 
+  // Find which board this user is part of (either owner or member)
+  React.useEffect(() => {
+    const findActiveBoard = async () => {
+      if (!user) return
+      
+      // 1. Check if user owns a board
+      const ownBoardRef = doc(db, "boards", user.uid)
+      const ownBoardSnap = await getDoc(ownBoardRef)
+      if (ownBoardSnap.exists()) {
+        setActiveBoardId(user.uid)
+        return
+      }
+
+      // 2. Check if user is a member of a board
+      const q = query(collection(db, "boards"), where("memberIds", "array-contains", user.uid))
+      const memberSnap = await getDocs(q)
+      if (!memberSnap.empty) {
+        setActiveBoardId(memberSnap.docs[0].id)
+      }
+    }
+    findActiveBoard()
+  }, [user, db])
+
   // Fetch all board members - ONLY FOR ADMINS
   React.useEffect(() => {
     const loadBoardAndMembers = async () => {
-      // Students should not attempt to list or fetch all members as it triggers permission errors
-      if (!user || !profile || !isAdmin) return;
+      if (!user || !profile || !isAdmin || !activeBoardId) return;
       
       setIsMembersLoading(true)
       try {
-        const targetBoardId = user.uid; // Admins use their own UID for the board
-        const boardRef = doc(db, "boards", targetBoardId);
+        const boardRef = doc(db, "boards", activeBoardId);
         const boardSnap = await getDoc(boardRef);
         
         if (boardSnap.exists()) {
@@ -91,9 +113,9 @@ export default function SettingsPage() {
     };
 
     loadBoardAndMembers();
-  }, [user, profile, isAdmin, db]);
+  }, [user, profile, isAdmin, db, activeBoardId]);
 
-  const roomInviteCode = user?.uid || ""
+  const roomInviteCode = activeBoardId || user?.uid || ""
 
   const handleCopyCode = () => {
     navigator.clipboard.writeText(roomInviteCode)
@@ -152,15 +174,36 @@ export default function SettingsPage() {
     }
   }
 
-  const handleUpdateRole = (memberId: string, newRole: 'Admin' | 'Member') => {
-    setMembers(members.map(m => m.id === memberId ? { ...m, role: newRole } : m))
-    toast({
-      title: "Role Updated",
-      description: "Member permissions have been modified.",
-    })
+  const handleUpdateRole = async (memberId: string, newRole: 'Admin' | 'Member') => {
+    if (!isAdmin) return;
+    
+    try {
+      // 1. Persist the role change to the user's document
+      const userRef = doc(db, "users", memberId);
+      await updateDoc(userRef, {
+        role: newRole.toLowerCase(),
+        updatedAt: new Date().toISOString()
+      });
+
+      // 2. Update local state
+      setMembers(members.map(m => m.id === memberId ? { ...m, role: newRole } : m))
+      
+      toast({
+        title: "Role Updated",
+        description: `${newRole} permissions have been synchronized across the workspace.`,
+      })
+    } catch (error: any) {
+      toast({
+        variant: "destructive",
+        title: "Update Failed",
+        description: error.message,
+      })
+    }
   }
 
-  const handleDeleteMember = (memberId: string) => {
+  const handleDeleteMember = async (memberId: string) => {
+    if (!isAdmin || !activeBoardId) return;
+    
     if (memberId === user?.uid) {
       toast({
         variant: "destructive",
@@ -169,12 +212,30 @@ export default function SettingsPage() {
       })
       return
     }
-    setMembers(members.filter(m => m.id !== memberId))
-    toast({
-      variant: "destructive",
-      title: "Member Removed",
-      description: "The user no longer has access to this board.",
-    })
+
+    try {
+      // 1. Remove from the board's member list in Firestore
+      const boardRef = doc(db, "boards", activeBoardId);
+      await updateDoc(boardRef, {
+        memberIds: arrayRemove(memberId),
+        updatedAt: new Date().toISOString()
+      });
+
+      // 2. Update local state
+      setMembers(members.filter(m => m.id !== memberId))
+      
+      toast({
+        variant: "destructive",
+        title: "Member Removed",
+        description: "The user no longer has access to this workspace.",
+      })
+    } catch (error: any) {
+      toast({
+        variant: "destructive",
+        title: "Removal Failed",
+        description: error.message,
+      })
+    }
   }
 
   return (
