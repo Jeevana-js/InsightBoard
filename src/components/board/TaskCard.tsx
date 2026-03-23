@@ -1,7 +1,7 @@
 "use client"
 
 import * as React from "react"
-import { Calendar, User, CheckSquare, List } from "lucide-react"
+import { Calendar, User } from "lucide-react"
 import { format } from "date-fns"
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
@@ -53,18 +53,7 @@ export function TaskCard({ task, onClick, onDragStart }: TaskCardProps) {
         
         <div className="flex items-center justify-between mt-auto pt-2 border-t border-muted/50">
           <div className="flex gap-2">
-            {task.subTasks.length > 0 && (
-              <div className="flex items-center gap-1 text-[10px] text-muted-foreground">
-                <List className="h-3 w-3" />
-                {task.subTasks.length}
-              </div>
-            )}
-            {task.acceptanceCriteria.length > 0 && (
-              <div className="flex items-center gap-1 text-[10px] text-muted-foreground">
-                <CheckSquare className="h-3 w-3" />
-                {task.acceptanceCriteria.length}
-              </div>
-            )}
+            {/* Acceptance Criteria and Sub-tasks indicators removed */}
           </div>
           
           {task.assignee ? (

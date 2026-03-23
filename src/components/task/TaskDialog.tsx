@@ -1,11 +1,10 @@
-
 "use client"
 
 import * as React from "react"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import * as z from "zod"
-import { Loader2, Sparkles, Plus, Trash2 } from "lucide-react"
+import { Loader2, Sparkles, Trash2 } from "lucide-react"
 import { format } from "date-fns"
 
 import { cn } from "@/lib/utils"
@@ -20,7 +19,6 @@ import {
 import {
   Form,
   FormControl,
-  FormDescription,
   FormField,
   FormItem,
   FormLabel,
@@ -68,8 +66,6 @@ export function TaskDialog({
   columnOptions = ['New', 'In Development', 'Resolved', 'Closed']
 }: TaskDialogProps) {
   const [isAiGenerating, setIsAiGenerating] = React.useState(false)
-  const [subTasks, setSubTasks] = React.useState<string[]>(task?.subTasks || [])
-  const [acceptanceCriteria, setAcceptanceCriteria] = React.useState<string[]>(task?.acceptanceCriteria || [])
 
   const form = useForm<z.infer<typeof taskSchema>>({
     resolver: zodResolver(taskSchema),
@@ -91,8 +87,6 @@ export function TaskDialog({
         assignee: task?.assignee || currentUsername || "",
         dueDate: task?.dueDate ? format(new Date(task.dueDate), "yyyy-MM-dd") : "",
       })
-      setSubTasks(task?.subTasks || [])
-      setAcceptanceCriteria(task?.acceptanceCriteria || [])
     }
   }, [open, task, defaultStatus, form, currentUsername, columnOptions])
 
@@ -107,8 +101,6 @@ export function TaskDialog({
     try {
       const result = await generateTaskDetails({ taskTitle: title })
       form.setValue("description", result.detailedDescription)
-      setSubTasks(result.suggestedSubTasks)
-      setAcceptanceCriteria(result.acceptanceCriteria)
     } catch (error) {
       console.error("AI Generation failed", error)
     } finally {
@@ -124,8 +116,6 @@ export function TaskDialog({
       status: values.status,
       assignee: values.assignee,
       dueDate: values.dueDate ? new Date(values.dueDate).toISOString() : undefined,
-      acceptanceCriteria,
-      subTasks,
       createdAt: task?.createdAt || new Date().toISOString(),
     }
     onSave(newTask)
@@ -244,80 +234,12 @@ export function TaskDialog({
                   <FormItem>
                     <FormLabel>Detailed Description</FormLabel>
                     <FormControl>
-                      <Textarea placeholder="What needs to be done?" className="min-h-[120px] resize-none" {...field} />
+                      <Textarea placeholder="What needs to be done?" className="min-h-[240px] resize-none" {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
                 )}
               />
-
-              <div className="space-y-4">
-                <div>
-                  <div className="flex justify-between items-center mb-2">
-                    <h3 className="text-sm font-semibold">Acceptance Criteria</h3>
-                    <Button type="button" variant="ghost" size="sm" onClick={() => setAcceptanceCriteria([...acceptanceCriteria, ""])}>
-                      <Plus className="h-4 w-4 mr-1" /> Add
-                    </Button>
-                  </div>
-                  <div className="space-y-2">
-                    {acceptanceCriteria.map((item, index) => (
-                      <div key={index} className="flex gap-2">
-                        <Input 
-                          value={item} 
-                          onChange={(e) => {
-                            const newCriteria = [...acceptanceCriteria]
-                            newCriteria[index] = e.target.value
-                            setAcceptanceCriteria(newCriteria)
-                          }}
-                          className="text-sm"
-                          placeholder="Criteria statement..."
-                        />
-                        <Button 
-                          type="button" 
-                          variant="ghost" 
-                          size="icon" 
-                          onClick={() => setAcceptanceCriteria(acceptanceCriteria.filter((_, i) => i !== index))}
-                        >
-                          <Trash2 className="h-4 w-4 text-destructive" />
-                        </Button>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-
-                <div>
-                  <div className="flex justify-between items-center mb-2">
-                    <h3 className="text-sm font-semibold">Sub-Tasks</h3>
-                    <Button type="button" variant="ghost" size="sm" onClick={() => setSubTasks([...subTasks, ""])}>
-                      <Plus className="h-4 w-4 mr-1" /> Add
-                    </Button>
-                  </div>
-                  <div className="space-y-2">
-                    {subTasks.map((item, index) => (
-                      <div key={index} className="flex gap-2">
-                        <Input 
-                          value={item} 
-                          onChange={(e) => {
-                            const newSub = [...subTasks]
-                            newSub[index] = e.target.value
-                            setSubTasks(newSub)
-                          }}
-                          className="text-sm"
-                          placeholder="Subtask description..."
-                        />
-                        <Button 
-                          type="button" 
-                          variant="ghost" 
-                          size="icon" 
-                          onClick={() => setSubTasks(subTasks.filter((_, i) => i !== index))}
-                        >
-                          <Trash2 className="h-4 w-4 text-destructive" />
-                        </Button>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              </div>
             </div>
             
             <DialogFooter className="sticky bottom-0 z-10 -mx-6 mt-auto p-6 border-t bg-background/80 backdrop-blur-md">

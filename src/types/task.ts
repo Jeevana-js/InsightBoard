@@ -7,8 +7,6 @@ export interface Task {
   status: TaskStatus;
   assignee?: string;
   dueDate?: string;
-  acceptanceCriteria: string[];
-  subTasks: string[];
   createdAt: string;
 }
 

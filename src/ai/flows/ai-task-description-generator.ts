@@ -1,7 +1,6 @@
 'use server';
 /**
- * @fileOverview A GenAI tool to assist users in elaborating on brief task titles into full descriptions,
- * suggesting sub-tasks, and generating acceptance criteria.
+ * @fileOverview A GenAI tool to assist users in elaborating on brief task titles into full descriptions.
  *
  * - generateTaskDetails - A function that generates detailed task information based on a title.
  * - GenerateTaskDetailsInput - The input type for the generateTaskDetails function.
@@ -18,10 +17,6 @@ export type GenerateTaskDetailsInput = z.infer<typeof GenerateTaskDetailsInputSc
 
 const GenerateTaskDetailsOutputSchema = z.object({
   detailedDescription: z.string().describe('A comprehensive description of the task.'),
-  suggestedSubTasks:
-    z.array(z.string()).describe('A list of suggested sub-tasks or steps to complete the main task.'),
-  acceptanceCriteria:
-    z.array(z.string()).describe('A list of acceptance criteria to define when the task is considered complete.'),
 });
 export type GenerateTaskDetailsOutput = z.infer<typeof GenerateTaskDetailsOutputSchema>;
 
@@ -30,7 +25,7 @@ const generateTaskDetailsPrompt = ai.definePrompt({
   input: {schema: GenerateTaskDetailsInputSchema},
   output: {schema: GenerateTaskDetailsOutputSchema},
   prompt: `You are an AI assistant specialized in project management and task breakdown.
-  Given a brief task title, your goal is to generate a detailed description, suggest relevant sub-tasks, and define clear acceptance criteria.
+  Given a brief task title, your goal is to generate a detailed and comprehensive description of the task.
 
   Task Title: {{{taskTitle}}}
 
