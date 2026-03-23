@@ -76,7 +76,7 @@ export function KanbanBoard({ userRole, username, rollNumber }: KanbanBoardProps
   const { toast } = useToast()
 
   const isAdmin = userRole === 'admin'
-  const boardTitle = isAdmin ? "All Members Board" : "Project reviewer"
+  const boardTitle = isAdmin ? "All Members Board" : "My workspace"
   
   const roomInviteCode = activeBoardId || ""
 
