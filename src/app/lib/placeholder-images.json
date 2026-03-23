@@ -1,0 +1,22 @@
+{
+  "placeholderImages": [
+    {
+      "id": "team-alex",
+      "description": "Avatar for Alex Rivera",
+      "imageUrl": "https://picsum.photos/seed/alex/100/100",
+      "imageHint": "person profile"
+    },
+    {
+      "id": "team-jordan",
+      "description": "Avatar for Jordan Smith",
+      "imageUrl": "https://picsum.photos/seed/jordan/100/100",
+      "imageHint": "person avatar"
+    },
+    {
+      "id": "team-taylor",
+      "description": "Avatar for Taylor Chen",
+      "imageUrl": "https://picsum.photos/seed/taylor/100/100",
+      "imageHint": "professional avatar"
+    }
+  ]
+}
