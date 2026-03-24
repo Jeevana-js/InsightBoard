@@ -172,7 +172,7 @@ export function TaskDialog({
         <DialogHeader className="p-6 pb-2">
           <DialogTitle className="flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <span className="text-slate-900">{task ? "Edit Task" : "Create New Task"}</span>
+              <span className="text-foreground">{task ? "Edit Task" : "Create New Task"}</span>
               <span className="text-xs font-normal text-muted-foreground ml-2">ID: {task?.id || 'NEW'}</span>
             </div>
             {task && (
@@ -197,10 +197,10 @@ export function TaskDialog({
                   name="title"
                   render={({ field }) => (
                     <FormItem className="col-span-2">
-                      <FormLabel className="text-slate-900">Title *</FormLabel>
+                      <FormLabel className="text-foreground">Title *</FormLabel>
                       <div className="flex gap-2">
                         <FormControl>
-                          <Input placeholder="e.g. Implement OAuth2 Login" {...field} className="text-slate-900" />
+                          <Input placeholder="e.g. Implement OAuth2 Login" {...field} />
                         </FormControl>
                         <Button 
                           type="button" 
@@ -223,10 +223,10 @@ export function TaskDialog({
                   name="status"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel className="text-slate-900">Status *</FormLabel>
+                      <FormLabel className="text-foreground">Status *</FormLabel>
                       <Select onValueChange={field.onChange} value={field.value}>
                         <FormControl>
-                          <SelectTrigger className="text-slate-900">
+                          <SelectTrigger>
                             <SelectValue placeholder="Select status" />
                           </SelectTrigger>
                         </FormControl>
@@ -246,14 +246,14 @@ export function TaskDialog({
                   name="assignee"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel className="text-slate-900">Assignee *</FormLabel>
+                      <FormLabel className="text-foreground">Assignee *</FormLabel>
                       <Select 
                         onValueChange={field.onChange} 
                         value={field.value}
                         disabled={!isAdmin}
                       >
                         <FormControl>
-                          <SelectTrigger className="text-slate-900">
+                          <SelectTrigger>
                             <SelectValue placeholder="Select assignee" />
                           </SelectTrigger>
                         </FormControl>
@@ -282,9 +282,9 @@ export function TaskDialog({
                   name="dueDate"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel className="text-slate-900">Due Date *</FormLabel>
+                      <FormLabel className="text-foreground">Due Date *</FormLabel>
                       <FormControl>
-                        <Input type="date" {...field} className="w-full text-slate-900" />
+                        <Input type="date" {...field} className="w-full" />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -297,9 +297,9 @@ export function TaskDialog({
                 name="description"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel className="text-slate-900">Detailed Description</FormLabel>
+                    <FormLabel className="text-foreground">Detailed Description</FormLabel>
                     <FormControl>
-                      <Textarea placeholder="What needs to be done?" className="min-h-[160px] resize-none text-slate-900" {...field} />
+                      <Textarea placeholder="What needs to be done?" className="min-h-[160px] resize-none" {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -310,8 +310,8 @@ export function TaskDialog({
                 control={form.control}
                 name="teacherComment"
                 render={({ field }) => (
-                  <FormItem className="bg-amber-50/50 p-4 rounded-xl border border-amber-100 space-y-3">
-                    <FormLabel className="text-amber-900 flex items-center gap-2 font-bold">
+                  <FormItem className="bg-amber-50/50 dark:bg-amber-950/20 p-4 rounded-xl border border-amber-100 dark:border-amber-900/50 space-y-3">
+                    <FormLabel className="text-amber-900 dark:text-amber-400 flex items-center gap-2 font-bold">
                       <MessageSquareQuote className="h-4 w-4" />
                       Teacher&apos;s Feedback & Comments
                     </FormLabel>
@@ -319,16 +319,16 @@ export function TaskDialog({
                       {isAdmin ? (
                         <Textarea 
                           placeholder="Add feedback for the student..." 
-                          className="min-h-[120px] resize-none bg-white border-amber-200 focus-visible:ring-amber-400 text-slate-900" 
+                          className="min-h-[120px] resize-none bg-white dark:bg-card border-amber-200 dark:border-amber-900/50 focus-visible:ring-amber-400" 
                           {...field} 
                         />
                       ) : (
-                        <div className="p-3 bg-white/80 rounded-lg border border-amber-100 min-h-[80px] text-sm text-slate-700 leading-relaxed whitespace-pre-wrap italic">
+                        <div className="p-3 bg-white/80 dark:bg-card/80 rounded-lg border border-amber-100 dark:border-amber-900/50 min-h-[80px] text-sm text-foreground/80 leading-relaxed whitespace-pre-wrap italic">
                           {field.value || "No feedback provided yet."}
                         </div>
                       )}
                     </FormControl>
-                    <p className="text-[10px] text-amber-700/70 italic px-1">
+                    <p className="text-[10px] text-amber-700/70 dark:text-amber-400/70 italic px-1">
                       {isAdmin ? "Only you can edit this section." : "Only your teacher can edit this section."}
                     </p>
                     <FormMessage />

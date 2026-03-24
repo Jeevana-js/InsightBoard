@@ -240,8 +240,8 @@ export function KanbanBoard({ userRole, username, rollNumber }: KanbanBoardProps
               <AlertCircle className="h-10 w-10 text-destructive" />
             </div>
             <div className="space-y-2">
-              <CardTitle className="text-2xl font-bold text-slate-900">Access Revoked</CardTitle>
-              <CardDescription className="text-lg font-medium text-slate-600">
+              <CardTitle className="text-2xl font-bold">Access Revoked</CardTitle>
+              <CardDescription className="text-lg font-medium">
                 You are no longer in this group.
               </CardDescription>
             </div>
