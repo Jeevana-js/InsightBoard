@@ -2,7 +2,7 @@
 
 import * as React from "react"
 import { useRouter } from "next/navigation"
-import { Search, Plus, LayoutGrid, List, SlidersHorizontal, User as UserIcon, LogOut, ShieldCheck, Share2, Copy, Check, Hash, Loader2, AlertCircle, Users } from "lucide-react"
+import { Search, Plus, LayoutGrid, List, SlidersHorizontal, User as UserIcon, LogOut, ShieldCheck, Share2, Copy, Check, Hash, Loader2, AlertCircle, Users, ChevronLeft, BarChart3 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { 
@@ -38,6 +38,7 @@ import { doc, getDoc, collection, query, where, getDocs, onSnapshot, setDoc, del
 import { errorEmitter } from "@/firebase/error-emitter"
 import { FirestorePermissionError } from "@/firebase/errors"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
+import { AnalyticsDashboard } from "./AnalyticsDashboard"
 import Link from "next/link"
 
 interface WorkspaceMember {
@@ -47,27 +48,29 @@ interface WorkspaceMember {
 }
 
 interface KanbanBoardProps {
+  boardId: string
   userRole?: string
   username?: string | null
   rollNumber?: string
+  onBack?: () => void
 }
 
-export function KanbanBoard({ userRole, username, rollNumber }: KanbanBoardProps) {
+export function KanbanBoard({ boardId, userRole, username, rollNumber, onBack }: KanbanBoardProps) {
   const [tasks, setTasks] = React.useState<Task[]>([])
   const [columns, setColumns] = React.useState<string[]>(INITIAL_COLUMNS)
   const [searchQuery, setSearchQuery] = React.useState("")
   const [assigneeFilter, setAssigneeFilter] = React.useState("all")
-  const [viewMode, setViewMode] = React.useState<'board' | 'list'>('board')
+  const [viewMode, setViewMode] = React.useState<'board' | 'list' | 'analytics'>('board')
   const [isTaskDialogOpen, setIsTaskDialogOpen] = React.useState(false)
   const [selectedTask, setSelectedTask] = React.useState<Task | undefined>()
   const [activeStatus, setActiveStatus] = React.useState<TaskStatus | undefined>()
   const [hasCopied, setHasCopied] = React.useState(false)
   const [workspaceMembers, setWorkspaceMembers] = React.useState<WorkspaceMember[]>([])
-  const [activeBoardId, setActiveBoardId] = React.useState<string | null>(null)
   const [boardData, setBoardData] = React.useState<any>(null)
   const [isAccessRevoked, setIsAccessRevoked] = React.useState(false)
-  const [isFindingBoard, setIsFindingBoard] = React.useState(true)
   
+  const activeBoardId = boardId
+
   const auth = useAuth()
   const { user } = useUser()
   const db = useFirestore()
@@ -76,37 +79,9 @@ export function KanbanBoard({ userRole, username, rollNumber }: KanbanBoardProps
 
   const isAdmin = userRole === 'admin'
   const isBoardOwner = boardData?.ownerId === user?.uid
-  const boardTitle = isBoardOwner ? "All Members Board" : "My workspace"
+  const boardTitle = boardData?.title || (isBoardOwner ? "All Members Board" : "My workspace")
   
-  const roomInviteCode = activeBoardId || ""
-
-  // Discover the active board/workspace
-  React.useEffect(() => {
-    const findBoard = async () => {
-      if (!user) return
-      setIsFindingBoard(true)
-      
-      try {
-        const q = query(collection(db, "boards"), where("memberIds", "array-contains", user.uid))
-        const memberSnap = await getDocs(q)
-        
-        if (!memberSnap.empty) {
-          setActiveBoardId(memberSnap.docs[0].id)
-        } else {
-          const ownBoardRef = doc(db, "boards", user.uid)
-          const ownBoardSnap = await getDoc(ownBoardRef)
-          if (ownBoardSnap.exists()) {
-            setActiveBoardId(user.uid)
-          }
-        }
-      } catch (err) {
-        console.error("Error discovering workspace:", err)
-      } finally {
-        setIsFindingBoard(false)
-      }
-    }
-    findBoard()
-  }, [user, db])
+  const roomInviteCode = boardData?.inviteCode || activeBoardId || ""
 
   // Sync board data and handle access revocation
   React.useEffect(() => {
@@ -293,31 +268,24 @@ export function KanbanBoard({ userRole, username, rollNumber }: KanbanBoardProps
     }
   }
 
-  // Auto-redirect removed members to login with notification
+  // Auto-redirect removed members back to dashboard
   React.useEffect(() => {
     if (!isAccessRevoked) return
     toast({
       variant: "destructive",
       title: "Access Revoked",
-      description: "You are no longer a member of this room. Please contact your teacher.",
+      description: "You are no longer a member of this room.",
     })
-    signOut(auth).then(() => {
-      router.push("/login")
-    }).catch(() => {
-      router.push("/login")
-    })
-  }, [isAccessRevoked, auth, router, toast])
-
-  if (isFindingBoard) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-background">
-        <div className="text-center space-y-4">
-          <Loader2 className="h-10 w-10 animate-spin text-primary mx-auto" />
-          <p className="text-muted-foreground font-medium">Syncing Workspace...</p>
-        </div>
-      </div>
-    )
-  }
+    if (onBack) {
+      onBack()
+    } else {
+      signOut(auth).then(() => {
+        router.push("/login")
+      }).catch(() => {
+        router.push("/login")
+      })
+    }
+  }, [isAccessRevoked, auth, router, toast, onBack])
 
   const filteredTasks = tasks.filter(task => {
     const matchesSearch = task.title.toLowerCase().includes(searchQuery.toLowerCase()) || 
@@ -460,6 +428,11 @@ export function KanbanBoard({ userRole, username, rollNumber }: KanbanBoardProps
       <header className="border-b bg-card px-6 py-4 flex flex-col gap-4 shadow-sm relative z-20">
         <div className="flex justify-between items-center">
           <div className="flex items-center gap-4">
+            {onBack && (
+              <Button variant="ghost" size="icon" onClick={onBack} className="h-9 w-9">
+                <ChevronLeft className="h-5 w-5" />
+              </Button>
+            )}
             <div className="h-10 w-10 bg-primary rounded-xl flex items-center justify-center shadow-lg transform -rotate-3">
               <LayoutGrid className="h-6 w-6 text-primary-foreground" />
             </div>
@@ -537,7 +510,7 @@ export function KanbanBoard({ userRole, username, rollNumber }: KanbanBoardProps
                 </DropdownMenuLabel>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem asChild>
-                  <Link href="/settings" className="cursor-pointer">
+                  <Link href={`/settings?board=${activeBoardId}`} className="cursor-pointer">
                     <SlidersHorizontal className="h-4 w-4 mr-2" />
                     Board Settings
                   </Link>
@@ -616,13 +589,28 @@ export function KanbanBoard({ userRole, username, rollNumber }: KanbanBoardProps
             >
               <List className="h-4 w-4" />
             </Button>
+            {isBoardOwner && (
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                className={cn(
+                  "h-8 px-2 rounded-sm transition-all",
+                  viewMode === 'analytics' ? "bg-background shadow-sm text-primary font-bold" : "text-muted-foreground"
+                )}
+                onClick={() => setViewMode('analytics')}
+              >
+                <BarChart3 className="h-4 w-4" />
+              </Button>
+            )}
           </div>
           </div>
         </div>
       </header>
 
       <main className="flex-1 overflow-auto p-6">
-        {viewMode === 'board' ? (
+        {viewMode === 'analytics' && isBoardOwner ? (
+          <AnalyticsDashboard tasks={tasks} members={workspaceMembers} />
+        ) : viewMode === 'board' ? (
           <div className="flex gap-6 h-full min-w-max">
             {columns.map((status, index) => (
               <KanbanColumn 

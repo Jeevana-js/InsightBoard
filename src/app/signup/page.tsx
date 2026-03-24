@@ -11,7 +11,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { useAuth, useUser, useFirestore } from "@/firebase"
 import { createUserWithEmailAndPassword, updateProfile } from "firebase/auth"
-import { doc, setDoc, arrayUnion, updateDoc, getDoc } from "firebase/firestore"
+import { doc, setDoc, arrayUnion, updateDoc, getDoc, collection, query, where, getDocs } from "firebase/firestore"
 import { useToast } from "@/hooks/use-toast"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 
@@ -82,32 +82,28 @@ export default function SignupPage() {
         updatedAt: new Date().toISOString()
       })
 
-      if (appRole === 'admin') {
-        await setDoc(doc(db, "boards", user.uid), {
-          id: user.uid,
-          title: `${formData.username}'s Workspace`,
-          ownerId: user.uid,
-          memberIds: [],
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString()
-        })
-      }
+      // Teachers create rooms from the dashboard, no auto-board creation
 
       if (isInviteActive) {
-        const targetCode = formData.inviteCode.trim()
-        const boardRef = doc(db, "boards", targetCode)
-        const boardSnap = await getDoc(boardRef)
+        const targetCode = formData.inviteCode.trim().toLowerCase()
+        // Search by inviteCode field
+        const q = query(collection(db, "boards"), where("inviteCode", "==", targetCode))
+        const snap = await getDocs(q)
         
-        if (boardSnap.exists()) {
-          await updateDoc(boardRef, {
-            memberIds: arrayUnion(user.uid)
+        if (!snap.empty) {
+          const boardDoc = snap.docs[0]
+          await updateDoc(doc(db, "boards", boardDoc.id), {
+            memberIds: arrayUnion(user.uid),
+            updatedAt: new Date().toISOString()
           })
         }
       }
 
       toast({
         title: "Account Created Successfully",
-        description: `Welcome to InsightBoard, ${formData.username}!`,
+        description: appRole === 'admin' 
+          ? `Welcome, ${formData.username}! Create your first room from the dashboard.` 
+          : `Welcome to InsightBoard, ${formData.username}!`,
       })
       router.push("/")
     } catch (error: any) {
@@ -196,29 +192,12 @@ export default function SignupPage() {
               </div>
             </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="inviteCode">Invitation Code (Optional)</Label>
-              <div className="relative">
-                <Hash className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                <Input 
-                  id="inviteCode" 
-                  placeholder="Enter code to join a room" 
-                  className="pl-10"
-                  value={formData.inviteCode}
-                  onChange={(e) => setFormData({...formData, inviteCode: e.target.value})}
-                />
-              </div>
-              <p className="text-[10px] text-muted-foreground italic px-1">
-                Entering a code will automatically join you to that Teacher's workspace as a Member.
-              </p>
-            </div>
-
             {!isInviteActive && (
               <div className="space-y-2">
                 <Label htmlFor="role">What is your role?</Label>
                 <Select 
                   value={formData.role}
-                  onValueChange={(val) => setFormData({...formData, role: val as any})}
+                  onValueChange={(val) => setFormData({...formData, role: val as any, inviteCode: ""})}
                 >
                   <SelectTrigger className="w-full">
                     <SelectValue placeholder="Select your role" />
@@ -240,6 +219,35 @@ export default function SignupPage() {
                 </Select>
                 <p className="text-[10px] text-muted-foreground italic px-1">
                   Teachers receive administrative control over their workspace.
+                </p>
+              </div>
+            )}
+
+            {formData.role === 'teacher' && !isInviteActive && (
+              <Alert className="border-primary/20 bg-primary/5">
+                <Hash className="h-4 w-4 text-primary" />
+                <AlertTitle className="text-xs font-bold uppercase tracking-wider text-primary">Invitation Code</AlertTitle>
+                <AlertDescription className="text-xs">
+                  Your unique invitation code will be generated once your account is created. Share it with students to join your workspace.
+                </AlertDescription>
+              </Alert>
+            )}
+
+            {formData.role === 'student' && !isInviteActive && (
+              <div className="space-y-2">
+                <Label htmlFor="inviteCode">Invitation Code (Optional)</Label>
+                <div className="relative">
+                  <Hash className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                  <Input 
+                    id="inviteCode" 
+                    placeholder="Enter code to join a room" 
+                    className="pl-10"
+                    value={formData.inviteCode}
+                    onChange={(e) => setFormData({...formData, inviteCode: e.target.value})}
+                  />
+                </div>
+                <p className="text-[10px] text-muted-foreground italic px-1">
+                  Entering a code will automatically join you to that Teacher's workspace as a Member.
                 </p>
               </div>
             )}

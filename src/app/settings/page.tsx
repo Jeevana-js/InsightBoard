@@ -3,7 +3,7 @@
 
 import * as React from "react"
 import Link from "next/link"
-import { useRouter } from "next/navigation"
+import { useRouter, useSearchParams } from "next/navigation"
 import { 
   ChevronLeft, 
   Shield, 
@@ -45,32 +45,38 @@ import {
 } from "@/components/ui/select"
 import { Badge } from "@/components/ui/badge"
 import { useToast } from "@/hooks/use-toast"
-import { Member } from "@/types/task"
+import { Member, INITIAL_COLUMNS } from "@/types/task"
 import { useUser, useFirestore, useDoc, useMemoFirebase, useAuth } from "@/firebase"
-import { doc, updateDoc, arrayUnion, getDoc, collection, query, where, getDocs, arrayRemove, onSnapshot } from "firebase/firestore"
+import { doc, updateDoc, arrayUnion, getDoc, collection, query, where, getDocs, arrayRemove, onSnapshot, deleteDoc, setDoc, writeBatch } from "firebase/firestore"
 import { signOut } from "firebase/auth"
 import { errorEmitter } from "@/firebase/error-emitter"
 import { FirestorePermissionError } from "@/firebase/errors"
 import { cn } from "@/lib/utils"
 import { useTheme } from "next-themes"
+import { Suspense } from "react"
 
-export default function SettingsPage() {
+function SettingsContent() {
   const [members, setMembers] = React.useState<Member[]>([])
   const [hasCopied, setHasCopied] = React.useState(false)
   const [joinCode, setJoinCode] = React.useState("")
   const [isJoining, setIsJoining] = React.useState(false)
   const [isMembersLoading, setIsMembersLoading] = React.useState(false)
-  const [activeBoardId, setActiveBoardId] = React.useState<string | null>(null)
   const [boardData, setBoardData] = React.useState<any>(null)
   const [isAccessRevoked, setIsAccessRevoked] = React.useState(false)
+  const [isResetting, setIsResetting] = React.useState(false)
+  const [isDeleting, setIsDeleting] = React.useState(false)
   const [mounted, setMounted] = React.useState(false)
   
   const { user } = useUser()
   const auth = useAuth()
   const db = useFirestore()
   const router = useRouter()
+  const searchParams = useSearchParams()
   const { toast } = useToast()
   const { theme, setTheme } = useTheme()
+
+  // Get boardId from query params or sessionStorage
+  const activeBoardId = searchParams.get("board") || (typeof window !== 'undefined' ? sessionStorage.getItem("activeBoardId") : null)
 
   // Prevent hydration mismatch
   React.useEffect(() => {
@@ -85,29 +91,6 @@ export default function SettingsPage() {
   const { data: profile, isLoading: isProfileLoading } = useDoc(profileRef)
 
   const isAdmin = profile?.role === 'admin'
-
-  // Find which board this user is part of (either owner or member)
-  React.useEffect(() => {
-    const findActiveBoard = async () => {
-      if (!user) return
-      
-      // 1. Check if user is a member of a board
-      const q = query(collection(db, "boards"), where("memberIds", "array-contains", user.uid))
-      const memberSnap = await getDocs(q)
-      if (!memberSnap.empty) {
-        setActiveBoardId(memberSnap.docs[0].id)
-        return
-      }
-
-      // 2. Check if user owns a board (Teachers)
-      const ownBoardRef = doc(db, "boards", user.uid)
-      const ownBoardSnap = await getDoc(ownBoardRef)
-      if (ownBoardSnap.exists()) {
-        setActiveBoardId(user.uid)
-      }
-    }
-    findActiveBoard()
-  }, [user, db])
 
   // Real-time board listener for live membership updates & access revocation
   React.useEffect(() => {
@@ -165,7 +148,7 @@ export default function SettingsPage() {
     loadMembers();
   }, [user, profile, db, activeBoardId, boardData, isAccessRevoked]);
 
-  const roomInviteCode = activeBoardId || user?.uid || ""
+  const roomInviteCode = boardData?.inviteCode || activeBoardId || ""
 
   const handleCopyCode = () => {
     navigator.clipboard.writeText(roomInviteCode)
@@ -178,7 +161,7 @@ export default function SettingsPage() {
   }
 
   const handleJoinRoom = async () => {
-    const code = joinCode.trim()
+    const code = joinCode.trim().toLowerCase()
     if (!code) {
       toast({ variant: "destructive", title: "Invalid Code", description: "Please enter a valid room invitation code." })
       return
@@ -186,10 +169,11 @@ export default function SettingsPage() {
 
     setIsJoining(true)
     try {
-      const boardRef = doc(db, "boards", code)
-      const boardSnap = await getDoc(boardRef)
+      // Search by inviteCode field
+      const q = query(collection(db, "boards"), where("inviteCode", "==", code))
+      const snap = await getDocs(q)
       
-      if (!boardSnap.exists()) {
+      if (snap.empty) {
         toast({
           variant: "destructive",
           title: "Not Found",
@@ -199,15 +183,21 @@ export default function SettingsPage() {
         return
       }
 
+      const boardDoc = snap.docs[0]
+      const boardRef = doc(db, "boards", boardDoc.id)
+
       updateDoc(boardRef, {
-        memberIds: arrayUnion(user?.uid)
+        memberIds: arrayUnion(user?.uid),
+        updatedAt: new Date().toISOString()
       }).then(() => {
         toast({
           title: "Workspace Joined",
           description: "You have successfully joined the teacher's board.",
         })
         setJoinCode("")
-        window.location.reload(); 
+        // Store and navigate to the joined board
+        sessionStorage.setItem("activeBoardId", boardDoc.id)
+        router.push("/")
       }).catch(async (err) => {
         errorEmitter.emit('permission-error', new FirestorePermissionError({
           path: boardRef.path,
@@ -311,6 +301,60 @@ export default function SettingsPage() {
         operation: 'update'
       }));
     });
+  }
+
+  const handleResetBoard = async () => {
+    if (!activeBoardId || !isAdmin) return
+    if (!window.confirm("Are you sure? This will move ALL tasks to the \"New\" column.")) return
+
+    setIsResetting(true)
+    try {
+      const batch = writeBatch(db)
+      
+      for (const colName of INITIAL_COLUMNS) {
+        if (colName === 'New') continue
+        const tasksSnap = await getDocs(collection(db, "boards", activeBoardId, "columns", colName, "tasks"))
+        for (const taskDoc of tasksSnap.docs) {
+          const taskData = taskDoc.data()
+          // Create in "New" column
+          const newRef = doc(db, "boards", activeBoardId, "columns", "New", "tasks", taskDoc.id)
+          batch.set(newRef, { ...taskData, status: 'New', updatedAt: new Date().toISOString() })
+          // Delete from old column
+          batch.delete(taskDoc.ref)
+        }
+      }
+      
+      await batch.commit()
+      toast({ title: "Board Reset", description: "All tasks have been moved to the New column." })
+    } catch (error: any) {
+      toast({ variant: "destructive", title: "Reset Failed", description: error.message || "Could not reset board." })
+    } finally {
+      setIsResetting(false)
+    }
+  }
+
+  const handleDeleteBoard = async () => {
+    if (!activeBoardId || !isAdmin) return
+    if (!window.confirm("Are you sure? This will permanently delete ALL tasks on this board. This cannot be undone.")) return
+
+    setIsDeleting(true)
+    try {
+      const batch = writeBatch(db)
+      
+      for (const colName of INITIAL_COLUMNS) {
+        const tasksSnap = await getDocs(collection(db, "boards", activeBoardId, "columns", colName, "tasks"))
+        for (const taskDoc of tasksSnap.docs) {
+          batch.delete(taskDoc.ref)
+        }
+      }
+      
+      await batch.commit()
+      toast({ title: "Board Cleared", description: "All tasks have been permanently deleted." })
+    } catch (error: any) {
+      toast({ variant: "destructive", title: "Delete Failed", description: error.message || "Could not delete tasks." })
+    } finally {
+      setIsDeleting(false)
+    }
   }
 
   const StarRating = ({ value, onChange, readOnly = false }: { value: number, onChange?: (val: number) => void, readOnly?: boolean }) => {
@@ -648,17 +692,21 @@ export default function SettingsPage() {
                     <div className="flex items-center justify-between">
                       <div>
                         <p className="text-sm font-semibold">Reset Board State</p>
-                        <p className="text-xs text-muted-foreground">Clear all current tasks and restore initial demo content.</p>
+                        <p className="text-xs text-muted-foreground">Move all tasks back to the "New" column.</p>
                       </div>
-                      <Button variant="outline">Reset Board</Button>
+                      <Button variant="outline" disabled={isResetting} onClick={handleResetBoard}>
+                        {isResetting ? <><Loader2 className="h-4 w-4 animate-spin mr-2" />Resetting...</> : "Reset Board"}
+                      </Button>
                     </div>
                     <Separator />
                     <div className="flex items-center justify-between">
                       <div>
                         <p className="text-sm font-semibold text-destructive">Delete Permanently</p>
-                        <p className="text-xs text-muted-foreground">Destroy this board and all its associated data forever.</p>
+                        <p className="text-xs text-muted-foreground">Destroy all tasks on this board forever.</p>
                       </div>
-                      <Button variant="destructive">Delete Board</Button>
+                      <Button variant="destructive" disabled={isDeleting} onClick={handleDeleteBoard}>
+                        {isDeleting ? <><Loader2 className="h-4 w-4 animate-spin mr-2" />Deleting...</> : "Delete Board"}
+                      </Button>
                     </div>
                   </CardContent>
                 </Card>
@@ -668,5 +716,17 @@ export default function SettingsPage() {
         </Tabs>
       </main>
     </div>
+  )
+}
+
+export default function SettingsPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <Loader2 className="h-10 w-10 animate-spin text-primary" />
+      </div>
+    }>
+      <SettingsContent />
+    </Suspense>
   )
 }

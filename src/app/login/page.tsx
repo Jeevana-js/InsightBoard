@@ -207,29 +207,19 @@ export default function LoginPage() {
         updatedAt: new Date().toISOString()
       })
 
-      if (appRole === 'admin') {
-        const boardRef = doc(db, "boards", user.uid)
-        const boardSnap = await getDoc(boardRef)
-        if (!boardSnap.exists()) {
-          await setDoc(boardRef, {
-            id: user.uid,
-            title: `${onboardingData.username}'s Workspace`,
-            ownerId: user.uid,
-            memberIds: [],
-            createdAt: new Date().toISOString(),
-            updatedAt: new Date().toISOString()
-          })
-        }
-      }
+      // Teachers create rooms from the dashboard, no auto-board creation
 
       if (isInviteActive) {
-        const targetCode = onboardingData.inviteCode.trim()
-        const boardRef = doc(db, "boards", targetCode)
-        const boardSnap = await getDoc(boardRef)
+        const targetCode = onboardingData.inviteCode.trim().toLowerCase()
+        // Search by inviteCode field
+        const q = query(collection(db, "boards"), where("inviteCode", "==", targetCode))
+        const snap = await getDocs(q)
         
-        if (boardSnap.exists()) {
-          await updateDoc(boardRef, {
-            memberIds: arrayUnion(user.uid)
+        if (!snap.empty) {
+          const boardDoc = snap.docs[0]
+          await updateDoc(doc(db, "boards", boardDoc.id), {
+            memberIds: arrayUnion(user.uid),
+            updatedAt: new Date().toISOString()
           })
         }
       }
@@ -304,53 +294,58 @@ export default function LoginPage() {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="inviteCode">Invitation Code (Optional)</Label>
-                <div className="relative">
-                  <Hash className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                  <Input 
-                    id="inviteCode" 
-                    placeholder="Enter code to join a room" 
-                    className="pl-10"
-                    value={onboardingData.inviteCode}
-                    onChange={(e) => setOnboardingData({...onboardingData, inviteCode: e.target.value})}
-                  />
-                </div>
+                <Label htmlFor="role">Your Role</Label>
+                <Select 
+                  value={onboardingData.role}
+                  onValueChange={(val) => setOnboardingData({...onboardingData, role: val as any, inviteCode: ""})}
+                >
+                  <SelectTrigger className="w-full">
+                    <SelectValue placeholder="Select your role" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="student">
+                      <div className="flex items-center">
+                        <GraduationCap className="h-4 w-4 mr-2 text-primary" />
+                        Student (Member)
+                      </div>
+                    </SelectItem>
+                    <SelectItem value="teacher">
+                      <div className="flex items-center">
+                        <Briefcase className="h-4 w-4 mr-2 text-primary" />
+                        Teacher (Admin)
+                      </div>
+                    </SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
 
-              {!onboardingData.inviteCode.trim() ? (
-                <div className="space-y-2">
-                  <Label htmlFor="role">Your Role</Label>
-                  <Select 
-                    value={onboardingData.role}
-                    onValueChange={(val) => setOnboardingData({...onboardingData, role: val as any})}
-                  >
-                    <SelectTrigger className="w-full">
-                      <SelectValue placeholder="Select your role" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="student">
-                        <div className="flex items-center">
-                          <GraduationCap className="h-4 w-4 mr-2 text-primary" />
-                          Student (Member)
-                        </div>
-                      </SelectItem>
-                      <SelectItem value="teacher">
-                        <div className="flex items-center">
-                          <Briefcase className="h-4 w-4 mr-2 text-primary" />
-                          Teacher (Admin)
-                        </div>
-                      </SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              ) : (
-                <Alert className="border-accent/20 bg-accent/5">
-                  <Hash className="h-4 w-4 text-accent" />
-                  <AlertTitle className="text-xs font-bold uppercase tracking-wider text-accent">Room Code Detected</AlertTitle>
+              {onboardingData.role === 'teacher' && (
+                <Alert className="border-primary/20 bg-primary/5">
+                  <Hash className="h-4 w-4 text-primary" />
+                  <AlertTitle className="text-xs font-bold uppercase tracking-wider text-primary">Teacher Dashboard</AlertTitle>
                   <AlertDescription className="text-xs">
-                    Joining a workspace will automatically assign you the <strong>Student Member</strong> role.
+                    After setup, you can create multiple rooms from your dashboard. Each room gets a unique invite code to share with students.
                   </AlertDescription>
                 </Alert>
+              )}
+
+              {onboardingData.role === 'student' && (
+                <div className="space-y-2">
+                  <Label htmlFor="inviteCode">Invitation Code (Optional)</Label>
+                  <div className="relative">
+                    <Hash className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                    <Input 
+                      id="inviteCode" 
+                      placeholder="Enter code to join a room" 
+                      className="pl-10"
+                      value={onboardingData.inviteCode}
+                      onChange={(e) => setOnboardingData({...onboardingData, inviteCode: e.target.value})}
+                    />
+                  </div>
+                  <p className="text-[10px] text-muted-foreground italic px-1">
+                    Enter a Teacher's code to join their workspace.
+                  </p>
+                </div>
               )}
 
               <Button type="submit" className="w-full mt-4" disabled={isLoading}>

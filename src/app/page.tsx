@@ -4,6 +4,7 @@
 import * as React from "react"
 import { useRouter } from "next/navigation"
 import { KanbanBoard } from "@/components/board/KanbanBoard"
+import { RoomDashboard } from "@/components/board/RoomDashboard"
 import { useUser, useDoc, useFirestore, useMemoFirebase } from "@/firebase"
 import { doc } from "firebase/firestore"
 import { Loader2 } from "lucide-react"
@@ -12,6 +13,7 @@ export default function Home() {
   const { user, isUserLoading } = useUser()
   const router = useRouter()
   const db = useFirestore()
+  const [selectedBoardId, setSelectedBoardId] = React.useState<string | null>(null)
 
   // Memoize document reference for fetching user profile
   const profileRef = useMemoFirebase(() => {
@@ -22,8 +24,6 @@ export default function Home() {
   const { data: profile, isLoading: isProfileLoading } = useDoc(profileRef)
 
   React.useEffect(() => {
-    // Wait for auth to settle. If we've definitely finished loading and there's no user, redirect.
-    // We use a slightly longer buffer (2.5s) to account for slow session synchronization across windows.
     if (!isUserLoading && !user) {
       const timeout = setTimeout(() => {
         router.push("/login")
@@ -32,7 +32,22 @@ export default function Home() {
     }
   }, [user, isUserLoading, router])
 
-  // If loading user or if we have a user but are still fetching their profile
+  // Restore selected board from sessionStorage
+  React.useEffect(() => {
+    const stored = sessionStorage.getItem("activeBoardId")
+    if (stored) setSelectedBoardId(stored)
+  }, [])
+
+  const handleSelectBoard = (boardId: string) => {
+    setSelectedBoardId(boardId)
+    sessionStorage.setItem("activeBoardId", boardId)
+  }
+
+  const handleBackToDashboard = () => {
+    setSelectedBoardId(null)
+    sessionStorage.removeItem("activeBoardId")
+  }
+
   if (isUserLoading || (user && isProfileLoading)) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
@@ -44,10 +59,8 @@ export default function Home() {
     )
   }
 
-  // If no user after loading, the useEffect will handle the redirect.
   if (!user) return null
 
-  // If we have a user but no profile (newly signed up or finishing redirect)
   if (!profile && !isProfileLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background p-4">
@@ -66,12 +79,28 @@ export default function Home() {
     )
   }
 
+  // If a board is selected, show the KanbanBoard
+  if (selectedBoardId) {
+    return (
+      <main className="min-h-screen bg-background">
+        <KanbanBoard 
+          boardId={selectedBoardId}
+          userRole={profile?.role} 
+          username={profile?.username || user.displayName} 
+          rollNumber={profile?.rollNumber}
+          onBack={handleBackToDashboard}
+        />
+      </main>
+    )
+  }
+
+  // Otherwise show the room dashboard
   return (
     <main className="min-h-screen bg-background">
-      <KanbanBoard 
-        userRole={profile?.role} 
-        username={profile?.username || user.displayName} 
-        rollNumber={profile?.rollNumber}
+      <RoomDashboard
+        userRole={profile?.role}
+        username={profile?.username || user.displayName}
+        onSelectBoard={handleSelectBoard}
       />
     </main>
   )

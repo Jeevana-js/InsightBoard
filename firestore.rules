@@ -55,10 +55,12 @@ service cloud.firestore {
 
     match /boards/{boardId} {
       allow get: if isSignedIn();
-      allow list: if isSignedIn(); // Filtered by board membership in app
+      allow list: if isSignedIn();
       allow create: if isSignedIn() && request.resource.data.ownerId == request.auth.uid;
       
+      // Board owner can do anything. Members can update (e.g., join via invite code).
       allow update: if isSignedIn() && (
+        resource.data.ownerId == request.auth.uid ||
         isBoardCollaborator(resource.data) || 
         (request.resource.data.memberIds.hasAny([request.auth.uid]))
       );
