@@ -3,7 +3,23 @@
 
 import * as React from "react"
 import Link from "next/link"
-import { ChevronLeft, Shield, Users, Settings as SettingsIcon, Trash2, UserPlus, Copy, Check, Hash, Loader2, DoorOpen, Star } from "lucide-react"
+import { 
+  ChevronLeft, 
+  Shield, 
+  Users, 
+  Settings as SettingsIcon, 
+  Trash2, 
+  UserPlus, 
+  Copy, 
+  Check, 
+  Hash, 
+  Loader2, 
+  DoorOpen, 
+  Star,
+  Moon,
+  Sun,
+  Monitor
+} from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -33,6 +49,7 @@ import { doc, updateDoc, arrayUnion, getDoc, collection, query, where, getDocs, 
 import { errorEmitter } from "@/firebase/error-emitter"
 import { FirestorePermissionError } from "@/firebase/errors"
 import { cn } from "@/lib/utils"
+import { useTheme } from "next-themes"
 
 export default function SettingsPage() {
   const [members, setMembers] = React.useState<Member[]>([])
@@ -45,6 +62,7 @@ export default function SettingsPage() {
   const { user } = useUser()
   const db = useFirestore()
   const { toast } = useToast()
+  const { theme, setTheme } = useTheme()
 
   const profileRef = useMemoFirebase(() => {
     if (!user) return null
@@ -287,7 +305,7 @@ export default function SettingsPage() {
 
   return (
     <div className="min-h-screen bg-background flex flex-col">
-      <header className="border-b bg-white px-6 py-4 grid grid-cols-3 items-center sticky top-0 z-50">
+      <header className="border-b bg-card px-6 py-4 grid grid-cols-3 items-center sticky top-0 z-50">
         <div className="flex justify-start">
           <Button variant="ghost" size="sm" asChild>
             <Link href="/">
@@ -297,7 +315,7 @@ export default function SettingsPage() {
           </Button>
         </div>
         <div className="flex justify-center">
-          <h1 className="text-xl font-bold tracking-tight whitespace-nowrap text-center text-slate-900">Board Settings</h1>
+          <h1 className="text-xl font-bold tracking-tight whitespace-nowrap text-center">Board Settings</h1>
         </div>
         <div className="flex justify-end">
         </div>
@@ -306,11 +324,11 @@ export default function SettingsPage() {
       <main className="flex-1 max-w-6xl w-full mx-auto p-6 md:p-8">
         <Tabs defaultValue="general" className="flex flex-col gap-8">
           <div className="sticky top-[73px] z-40 w-full mb-10">
-            <div className="relative mx-auto max-w-4xl p-2 rounded-2xl bg-white/40 backdrop-blur-3xl border border-white/50 shadow-[0_8px_32px_rgba(0,0,0,0.08)] flex justify-center transition-all duration-500">
+            <div className="relative mx-auto max-w-4xl p-2 rounded-2xl bg-card/40 backdrop-blur-3xl border border-border shadow-[0_8px_32px_rgba(0,0,0,0.08)] flex justify-center transition-all duration-500">
               <TabsList className="bg-transparent h-auto p-0 gap-2 flex flex-wrap justify-center border-none">
                 <TabsTrigger 
                   value="general" 
-                  className="gap-2 px-8 py-2.5 data-[state=active]:bg-primary data-[state=active]:text-white data-[state=active]:shadow-lg rounded-xl transition-all duration-300 font-semibold text-sm"
+                  className="gap-2 px-8 py-2.5 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-lg rounded-xl transition-all duration-300 font-semibold text-sm"
                 >
                   <SettingsIcon className="h-4 w-4" />
                   General
@@ -318,7 +336,7 @@ export default function SettingsPage() {
                 
                 <TabsTrigger 
                   value="members" 
-                  className="gap-2 px-8 py-2.5 data-[state=active]:bg-primary data-[state=active]:text-white data-[state=active]:shadow-lg rounded-xl transition-all duration-300 font-semibold text-sm"
+                  className="gap-2 px-8 py-2.5 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-lg rounded-xl transition-all duration-300 font-semibold text-sm"
                 >
                   <Users className="h-4 w-4" />
                   {isAdmin ? "Member Access" : "Team Members"}
@@ -327,7 +345,7 @@ export default function SettingsPage() {
                 {isAdmin && (
                   <TabsTrigger 
                     value="admin" 
-                    className="gap-2 px-8 py-2.5 data-[state=active]:bg-primary data-[state=active]:text-white data-[state=active]:shadow-lg rounded-xl transition-all duration-300 font-semibold text-sm"
+                    className="gap-2 px-8 py-2.5 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-lg rounded-xl transition-all duration-300 font-semibold text-sm"
                   >
                     <Shield className="h-4 w-4" />
                     Admin Controls
@@ -339,7 +357,7 @@ export default function SettingsPage() {
 
           <div className="max-w-4xl w-full mx-auto">
             <TabsContent value="general" className="mt-0 space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
-              <Card className="border-none shadow-sm ring-1 ring-border">
+              <Card>
                 <CardHeader>
                   <CardTitle>Profile Details</CardTitle>
                   <CardDescription>
@@ -353,7 +371,7 @@ export default function SettingsPage() {
                       id="username" 
                       value={isProfileLoading ? "Loading..." : (profile?.username || user?.displayName || "")} 
                       readOnly
-                      className="bg-muted/30 border-none font-medium h-11 text-slate-900"
+                      className="bg-muted/30 border-none font-medium h-11"
                     />
                   </div>
                   <div className="grid grid-cols-2 gap-6">
@@ -374,9 +392,46 @@ export default function SettingsPage() {
                       </div>
                     )}
                   </div>
-                  <p className="text-[11px] text-muted-foreground italic">
-                    Roles and ratings are managed by your teacher at the workspace level.
-                  </p>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader>
+                  <CardTitle>Appearance</CardTitle>
+                  <CardDescription>
+                    Customize how InsightBoard looks for you.
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-6">
+                  <div className="space-y-4">
+                    <Label>Theme Mode</Label>
+                    <div className="grid grid-cols-3 gap-4">
+                      <Button 
+                        variant={theme === 'light' ? 'default' : 'outline'} 
+                        className="h-20 flex-col gap-2"
+                        onClick={() => setTheme('light')}
+                      >
+                        <Sun className="h-5 w-5" />
+                        <span className="text-xs">Light</span>
+                      </Button>
+                      <Button 
+                        variant={theme === 'dark' ? 'default' : 'outline'} 
+                        className="h-20 flex-col gap-2"
+                        onClick={() => setTheme('dark')}
+                      >
+                        <Moon className="h-5 w-5" />
+                        <span className="text-xs">Dark</span>
+                      </Button>
+                      <Button 
+                        variant={theme === 'system' ? 'default' : 'outline'} 
+                        className="h-20 flex-col gap-2"
+                        onClick={() => setTheme('system')}
+                      >
+                        <Monitor className="h-5 w-5" />
+                        <span className="text-xs">System</span>
+                      </Button>
+                    </div>
+                  </div>
                 </CardContent>
               </Card>
 
@@ -397,13 +452,13 @@ export default function SettingsPage() {
                       <Input 
                         readOnly 
                         value={roomInviteCode} 
-                        className="bg-white border-dashed font-code text-sm tracking-wider text-center py-6 h-12 text-slate-950 font-bold"
+                        className="bg-card border-dashed font-code text-sm tracking-wider text-center py-6 h-12 font-bold"
                       />
-                      <Button variant="outline" size="icon" onClick={handleCopyCode} className="shrink-0 bg-white h-12 w-12">
+                      <Button variant="outline" size="icon" onClick={handleCopyCode} className="shrink-0 bg-card h-12 w-12">
                         {hasCopied ? <Check className="h-5 w-5 text-emerald-500" /> : <Copy className="h-5 w-5" />}
                       </Button>
                     </div>
-                    <div className="rounded-lg bg-white/50 p-3 border border-accent/10">
+                    <div className="rounded-lg bg-card/50 p-3 border border-accent/10">
                       <p className="text-[11px] text-accent font-medium leading-relaxed">
                         <strong>Teacher Security:</strong> Users signing up with this code are restricted to the <strong>Student Member</strong> role.
                       </p>
@@ -428,7 +483,7 @@ export default function SettingsPage() {
                         placeholder="Enter room code..." 
                         value={joinCode}
                         onChange={(e) => setJoinCode(e.target.value)}
-                        className="bg-white border font-code text-sm tracking-wider text-center h-12 text-slate-950"
+                        className="bg-card border font-code text-sm tracking-wider text-center h-12"
                       />
                       <Button onClick={handleJoinRoom} disabled={isJoining || !joinCode} className="h-12 px-6">
                         {isJoining ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <UserPlus className="h-4 w-4 mr-2" />}
@@ -441,7 +496,7 @@ export default function SettingsPage() {
             </TabsContent>
 
             <TabsContent value="members" className="mt-0 space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
-              <Card className="border-none shadow-sm ring-1 ring-border">
+              <Card>
                 <CardHeader>
                   <CardTitle>{isAdmin ? "Team Management" : "Team Members"}</CardTitle>
                   <CardDescription>
@@ -469,7 +524,7 @@ export default function SettingsPage() {
                             <TableCell>
                               <div className="flex items-center gap-2">
                                 <div>
-                                  <p className="font-medium text-slate-900">{member.name}</p>
+                                  <p className="font-medium">{member.name}</p>
                                   <p className="text-xs text-muted-foreground">{member.email}</p>
                                 </div>
                                 {member.role === 'Admin' && (
@@ -539,9 +594,9 @@ export default function SettingsPage() {
 
             {isAdmin && (
               <TabsContent value="admin" className="mt-0 space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
-                <Card className="border-none shadow-sm ring-1 ring-destructive/20">
-                  <CardHeader className="bg-destructive/5">
-                    <CardTitle className="text-destructive hover:text-destructive">Danger Zone</CardTitle>
+                <Card className="ring-1 ring-destructive/20 border-none">
+                  <CardHeader className="bg-destructive/5 rounded-t-lg">
+                    <CardTitle className="text-destructive">Danger Zone</CardTitle>
                     <CardDescription>
                       Irreversible actions that affect the entire board.
                     </CardDescription>
@@ -549,7 +604,7 @@ export default function SettingsPage() {
                   <CardContent className="pt-6 space-y-6">
                     <div className="flex items-center justify-between">
                       <div>
-                        <p className="text-sm font-semibold text-slate-900">Reset Board State</p>
+                        <p className="text-sm font-semibold">Reset Board State</p>
                         <p className="text-xs text-muted-foreground">Clear all current tasks and restore initial demo content.</p>
                       </div>
                       <Button variant="outline">Reset Board</Button>
@@ -560,7 +615,7 @@ export default function SettingsPage() {
                         <p className="text-sm font-semibold text-destructive">Delete Permanently</p>
                         <p className="text-xs text-muted-foreground">Destroy this board and all its associated data forever.</p>
                       </div>
-                      <Button variant="destructive" className="hover:bg-destructive hover:text-destructive-foreground">Delete Board</Button>
+                      <Button variant="destructive">Delete Board</Button>
                     </div>
                   </CardContent>
                 </Card>
