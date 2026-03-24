@@ -20,6 +20,7 @@ export default function LoginPage() {
   const [email, setEmail] = React.useState("")
   const [password, setPassword] = React.useState("")
   const [isLoading, setIsLoading] = React.useState(false)
+  const [isProcessingRedirect, setIsProcessingRedirect] = React.useState(true)
   
   const [showRoleSelection, setShowRoleSelection] = React.useState(false)
   const [tempGoogleUser, setTempGoogleUser] = React.useState<User | null>(null)
@@ -38,10 +39,11 @@ export default function LoginPage() {
 
   // Handle Redirect Result on Mount
   React.useEffect(() => {
+    let isMounted = true;
     const checkRedirect = async () => {
       try {
         const result = await getRedirectResult(auth)
-        if (result && result.user) {
+        if (result && result.user && isMounted) {
           const user = result.user
           setIsLoading(true)
 
@@ -84,15 +86,19 @@ export default function LoginPage() {
           })
         }
       } finally {
-        setIsLoading(false)
+        if (isMounted) {
+          setIsProcessingRedirect(false)
+          setIsLoading(false)
+        }
       }
     }
     checkRedirect()
+    return () => { isMounted = false; }
   }, [auth, db, router, toast])
 
   // If already signed in (not via redirect result, but normal session)
   React.useEffect(() => {
-    if (currentUser && !showRoleSelection && !isUserLoading && !tempGoogleUser) {
+    if (currentUser && !showRoleSelection && !isUserLoading && !tempGoogleUser && !isProcessingRedirect) {
       const checkProfile = async () => {
         try {
           const docSnap = await getDoc(doc(db, "users", currentUser.uid))
@@ -110,7 +116,7 @@ export default function LoginPage() {
       }
       checkProfile()
     }
-  }, [currentUser, showRoleSelection, router, db, isUserLoading, tempGoogleUser])
+  }, [currentUser, showRoleSelection, router, db, isUserLoading, tempGoogleUser, isProcessingRedirect])
 
   const handleEmailLogin = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -136,7 +142,6 @@ export default function LoginPage() {
     try {
       const provider = new GoogleAuthProvider()
       provider.setCustomParameters({ prompt: 'select_account' })
-      // Use Redirect for maximum reliability in Studio environment
       await signInWithRedirect(auth, provider)
     } catch (error: any) {
       setIsLoading(false)
@@ -218,6 +223,17 @@ export default function LoginPage() {
     } finally {
       setIsLoading(false)
     }
+  }
+
+  if (isProcessingRedirect || (isUserLoading && !currentUser)) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-muted/40">
+        <div className="text-center space-y-4">
+          <Loader2 className="h-10 w-10 animate-spin text-primary mx-auto" />
+          <p className="text-muted-foreground font-medium animate-pulse">Checking authentication...</p>
+        </div>
+      </div>
+    )
   }
 
   if (showRoleSelection) {

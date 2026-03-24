@@ -22,12 +22,12 @@ export default function Home() {
   const { data: profile, isLoading: isProfileLoading } = useDoc(profileRef)
 
   React.useEffect(() => {
-    // Only redirect if we are certain the user is not logged in.
-    // Increase delay to 1.5s to handle redirect-login settlement more reliably.
+    // Increase delay to handle redirect-login settlement more reliably.
+    // If we've finished loading and there's no user, then redirect.
     if (!isUserLoading && !user) {
       const timeout = setTimeout(() => {
         router.push("/login")
-      }, 1500)
+      }, 2000)
       return () => clearTimeout(timeout)
     }
   }, [user, isUserLoading, router])
