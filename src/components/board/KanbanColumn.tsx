@@ -1,4 +1,3 @@
-
 "use client"
 
 import * as React from "react"
@@ -117,7 +116,7 @@ export function KanbanColumn({
           ) : (
             <>
               <h2 className="font-headline font-semibold text-sm tracking-wide truncate max-w-[150px]">{status.toUpperCase()}</h2>
-              <span className="flex items-center justify-center h-5 px-1.5 text-[10px] font-bold rounded-full bg-white border text-muted-foreground">
+              <span className="flex items-center justify-center h-5 px-1.5 text-[10px] font-bold rounded-full bg-card border text-muted-foreground">
                 {tasks.length}
               </span>
             </>

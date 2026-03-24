@@ -402,7 +402,7 @@ export function KanbanBoard({ userRole, username, rollNumber }: KanbanBoardProps
 
   return (
     <div className="flex flex-col h-screen overflow-hidden bg-background">
-      <header className="border-b bg-white px-6 py-4 flex flex-col gap-4 shadow-sm relative z-20">
+      <header className="border-b bg-card px-6 py-4 flex flex-col gap-4 shadow-sm relative z-20">
         <div className="flex justify-between items-center">
           <div className="flex items-center gap-4">
             <div className="h-10 w-10 bg-primary rounded-xl flex items-center justify-center shadow-lg transform -rotate-3">
@@ -436,10 +436,10 @@ export function KanbanBoard({ userRole, username, rollNumber }: KanbanBoardProps
                     Invite Students
                   </Button>
                 </PopoverTrigger>
-                <PopoverContent className="w-80 p-5 shadow-2xl border-accent/20 bg-white/95 backdrop-blur-sm">
+                <PopoverContent className="w-80 p-5 shadow-2xl border-accent/20 bg-popover backdrop-blur-sm">
                   <div className="space-y-4">
                     <div className="space-y-1.5">
-                      <h4 className="text-sm font-bold flex items-center gap-2 text-slate-900">
+                      <h4 className="text-sm font-bold flex items-center gap-2">
                         <Hash className="h-4 w-4 text-accent" />
                         Room Invite Code
                       </h4>
@@ -451,7 +451,7 @@ export function KanbanBoard({ userRole, username, rollNumber }: KanbanBoardProps
                       <Input 
                         readOnly 
                         value={roomInviteCode} 
-                        className="h-10 text-xs bg-muted/30 border border-accent/20 font-code text-center font-bold text-slate-900"
+                        className="h-10 text-xs bg-muted/30 border border-accent/20 font-code text-center font-bold"
                       />
                       <Button size="icon" variant="secondary" className="h-10 w-10 shrink-0 shadow-sm" onClick={copyInviteCode}>
                         {hasCopied ? <Check className="h-5 w-5 text-emerald-500" /> : <Copy className="h-5 w-5" />}
@@ -476,7 +476,7 @@ export function KanbanBoard({ userRole, username, rollNumber }: KanbanBoardProps
               <DropdownMenuContent align="end" className="w-56">
                 <DropdownMenuLabel>
                   <div className="flex flex-col">
-                    <span className="font-bold text-slate-900">{username || "User"}</span>
+                    <span className="font-bold">{username || "User"}</span>
                     <span className="text-[10px] text-muted-foreground uppercase tracking-wider">{userRole}</span>
                   </div>
                 </DropdownMenuLabel>
@@ -511,7 +511,7 @@ export function KanbanBoard({ userRole, username, rollNumber }: KanbanBoardProps
           {isBoardOwner && (
             <div className="w-[240px]">
               <Select value={assigneeFilter} onValueChange={setAssigneeFilter}>
-                <SelectTrigger className="h-10 bg-white shadow-sm border-muted">
+                <SelectTrigger className="h-10 bg-background shadow-sm border-muted">
                   <div className="flex items-center gap-2">
                     <Users className="h-4 w-4 text-muted-foreground" />
                     <SelectValue placeholder="Filter by Member" />
@@ -543,7 +543,7 @@ export function KanbanBoard({ userRole, username, rollNumber }: KanbanBoardProps
               size="sm" 
               className={cn(
                 "h-8 px-2 rounded-sm transition-all",
-                viewMode === 'board' ? "bg-white shadow-sm text-primary font-bold" : "text-muted-foreground"
+                viewMode === 'board' ? "bg-background shadow-sm text-primary font-bold" : "text-muted-foreground"
               )}
               onClick={() => setViewMode('board')}
             >
@@ -554,7 +554,7 @@ export function KanbanBoard({ userRole, username, rollNumber }: KanbanBoardProps
               size="sm" 
               className={cn(
                 "h-8 px-2 rounded-sm transition-all",
-                viewMode === 'list' ? "bg-white shadow-sm text-primary font-bold" : "text-muted-foreground"
+                viewMode === 'list' ? "bg-background shadow-sm text-primary font-bold" : "text-muted-foreground"
               )}
               onClick={() => setViewMode('list')}
             >
