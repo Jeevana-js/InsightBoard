@@ -23,9 +23,12 @@ export default function Home() {
 
   React.useEffect(() => {
     // Only redirect if we are certain the user is not logged in.
-    // Small delay helps avoid bounce-back during auth settlement.
+    // Small delay helps avoid bounce-back during auth settlement (especially after redirect login).
     if (!isUserLoading && !user) {
-      router.push("/login")
+      const timeout = setTimeout(() => {
+        router.push("/login")
+      }, 500)
+      return () => clearTimeout(timeout)
     }
   }, [user, isUserLoading, router])
 
@@ -44,17 +47,14 @@ export default function Home() {
   // If no user after loading, let the useEffect handle the redirect.
   if (!user) return null
 
-  // If we have a user but no profile (newly signed up but doc not created yet)
-  // we might want to show a loading state or redirect to onboarding.
-  // In our flow, the login page handles onboarding, so if they reach here,
-  // they should have a profile.
+  // If we have a user but no profile (newly signed up or finishing redirect)
   if (!profile && !isProfileLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background p-4">
         <div className="text-center space-y-4 max-w-sm">
           <Loader2 className="h-10 w-10 animate-spin text-primary mx-auto" />
           <p className="text-lg font-semibold">Preparing your profile...</p>
-          <p className="text-sm text-muted-foreground">If this takes too long, you may need to complete your account setup.</p>
+          <p className="text-sm text-muted-foreground">If you're new, we're setting things up. If this takes more than a few seconds, you may need to complete setup.</p>
           <button 
             onClick={() => router.push("/login")}
             className="text-primary underline text-sm"

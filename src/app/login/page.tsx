@@ -11,7 +11,7 @@ import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { useAuth, useUser, useFirestore } from "@/firebase"
-import { signInWithEmailAndPassword, GoogleAuthProvider, signInWithPopup, updateProfile, User } from "firebase/auth"
+import { signInWithEmailAndPassword, GoogleAuthProvider, signInWithRedirect, getRedirectResult, updateProfile, User } from "firebase/auth"
 import { doc, getDoc, setDoc, updateDoc, arrayUnion, collection, query, where, getDocs } from "firebase/firestore"
 import { useToast } from "@/hooks/use-toast"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
@@ -36,6 +36,59 @@ export default function LoginPage() {
   const router = useRouter()
   const { toast } = useToast()
 
+  // Handle Redirect Result on Mount
+  React.useEffect(() => {
+    const checkRedirect = async () => {
+      try {
+        const result = await getRedirectResult(auth)
+        if (result && result.user) {
+          const user = result.user
+          setIsLoading(true)
+
+          // Check if user exists in Firestore
+          const userDoc = await getDoc(doc(db, "users", user.uid))
+          
+          if (userDoc.exists()) {
+            router.push("/")
+            return
+          }
+
+          // Check if they were invited
+          const q = query(collection(db, "boards"), where("memberIds", "array-contains", user.uid))
+          const memberSnap = await getDocs(q)
+          
+          if (!memberSnap.empty) {
+            await setDoc(doc(db, "users", user.uid), {
+              id: user.uid,
+              username: user.displayName || "User",
+              email: user.email,
+              rollNumber: "PENDING",
+              role: 'member',
+              createdAt: new Date().toISOString(),
+              updatedAt: new Date().toISOString()
+            })
+            router.push("/")
+          } else {
+            setTempGoogleUser(user)
+            setOnboardingData(prev => ({ ...prev, username: user.displayName || "" }))
+            setShowRoleSelection(true)
+          }
+        }
+      } catch (error: any) {
+        if (error.code !== 'auth/no-current-user') {
+          toast({
+            variant: "destructive",
+            title: "Sign-in Error",
+            description: error.message,
+          })
+        }
+      } finally {
+        setIsLoading(false)
+      }
+    }
+    checkRedirect()
+  }, [auth, db, router, toast])
+
   // If already signed in and has a profile, go home.
   React.useEffect(() => {
     if (currentUser && !showRoleSelection && !isUserLoading) {
@@ -46,7 +99,7 @@ export default function LoginPage() {
             router.push("/")
           }
         } catch (err) {
-          // If profile check fails, stay on login/onboarding
+          // Stay on page
         }
       }
       checkProfile()
@@ -77,60 +130,15 @@ export default function LoginPage() {
     try {
       const provider = new GoogleAuthProvider()
       provider.setCustomParameters({ prompt: 'select_account' })
-      
-      const result = await signInWithPopup(auth, provider)
-      const user = result.user
-
-      if (!user) {
-        throw new Error("Could not retrieve user information from Google.")
-      }
-
-      // Check if user exists in Firestore
-      const userDoc = await getDoc(doc(db, "users", user.uid))
-      
-      if (userDoc.exists()) {
-        router.push("/")
-        return
-      }
-
-      // If no profile, check if they were invited (exist in any board memberIds)
-      const q = query(collection(db, "boards"), where("memberIds", "array-contains", user.uid))
-      const memberSnap = await getDocs(q)
-      
-      if (!memberSnap.empty) {
-        // Auto-create minimal profile for invited users
-        await setDoc(doc(db, "users", user.uid), {
-          id: user.uid,
-          username: user.displayName || "User",
-          email: user.email,
-          rollNumber: "PENDING",
-          role: 'member',
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString()
-        })
-        router.push("/")
-      } else {
-        // New user needs onboarding
-        setTempGoogleUser(user)
-        setOnboardingData(prev => ({
-          ...prev,
-          username: user.displayName || ""
-        }))
-        setShowRoleSelection(true)
-      }
+      // Use Redirect instead of Popup for better compatibility in workstation environments
+      await signInWithRedirect(auth, provider)
     } catch (error: any) {
-      if (error.code === 'auth/popup-closed-by-user') {
-        setIsLoading(false)
-        return
-      }
-      
+      setIsLoading(false)
       toast({
         variant: "destructive",
         title: "Google Login Failed",
         description: error.message || "An error occurred during sign-in.",
       })
-    } finally {
-      setIsLoading(false)
     }
   }
 
