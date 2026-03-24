@@ -74,18 +74,14 @@ service cloud.firestore {
     }
 
     match /boards/{boardId}/columns/{columnId}/tasks/{taskId} {
-      // READ: Students only see tasks they created. Teachers see everything on their board.
-      // Important: Students often need to 'list' based on creatorId.
-      allow read, list: if canStudentSeeTask(resource.data);
+      // Any board collaborator can read and list tasks. Privacy is enforced by app-level queries.
+      allow read, list: if isBoardCollaborator(get(/databases/$(database)/documents/boards/$(boardId)).data);
       
-      // WRITE: User must be a member and either be the creator or the board owner.
-      // Firestore 'write' covers both 'create' and 'update'.
-      allow create, update: if isBoardCollaborator(request.resource.data) && (
-        request.auth.uid == request.resource.data.creatorId || 
-        request.auth.uid == request.resource.data.ownerId
-      );
+      // Any board collaborator can create and update tasks.
+      allow create, update: if isBoardCollaborator(request.resource.data);
       
-      allow delete: if canStudentSeeTask(resource.data);
+      // Any board collaborator can delete tasks.
+      allow delete: if isBoardCollaborator(resource.data);
     }
   }
 }

@@ -8,6 +8,9 @@ import { ThemeProvider } from '@/components/theme-provider';
 export const metadata: Metadata = {
   title: 'InsightBoard - Professional Agile Management',
   description: 'AI-powered Kanban board for high-performance engineering teams.',
+  icons: {
+    icon: '/favicon.svg',
+  },
 };
 
 export default function RootLayout({

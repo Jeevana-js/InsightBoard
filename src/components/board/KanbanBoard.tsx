@@ -133,9 +133,22 @@ export function KanbanBoard({ userRole, username, rollNumber }: KanbanBoardProps
     return () => unsub()
   }, [activeBoardId, db, user])
 
+  // Ref-based task map to merge results from multiple listeners without race conditions
+  const taskMapRef = React.useRef<Map<string, Task>>(new Map())
+
+  const rebuildTasksFromMap = React.useCallback(() => {
+    const allTasks = Array.from(taskMapRef.current.values())
+    allTasks.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+    setTasks(allTasks)
+  }, [])
+
   // Sync tasks with privacy logic
   React.useEffect(() => {
     if (!activeBoardId || !user || isAccessRevoked || !boardData) return
+
+    // Clear task map when dependencies change
+    taskMapRef.current.clear()
+    setTasks([])
 
     const unsubscribes: (() => void)[] = []
 
@@ -147,15 +160,16 @@ export function KanbanBoard({ userRole, username, rollNumber }: KanbanBoardProps
         const q = query(baseCol, where("ownerId", "==", user.uid))
         const unsub = onSnapshot(q, 
           (snap) => {
-            const colTasks = snap.docs.map(doc => ({ ...doc.data(), id: doc.id } as Task))
-            setTasks(prev => {
-              const otherTasks = prev.filter(t => t.status !== colId)
-              return [...otherTasks, ...colTasks].sort((a, b) => 
-                new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-              )
+            // Remove old tasks from this column first
+            for (const [id, t] of taskMapRef.current) {
+              if (t.status === colId) taskMapRef.current.delete(id)
+            }
+            snap.docs.forEach(d => {
+              taskMapRef.current.set(d.id, { ...d.data(), id: d.id } as Task)
             })
+            rebuildTasksFromMap()
           },
-          async (serverError) => {
+          async () => {
             errorEmitter.emit('permission-error', new FirestorePermissionError({
               path: `boards/${activeBoardId}/columns/${colId}/tasks`,
               operation: 'list',
@@ -168,43 +182,68 @@ export function KanbanBoard({ userRole, username, rollNumber }: KanbanBoardProps
         const qCreated = query(baseCol, where("creatorId", "==", user.uid))
         const unsub1 = onSnapshot(qCreated, 
           (snap) => {
-            const createdTasks = snap.docs.map(doc => ({ ...doc.data(), id: doc.id } as Task))
-            setTasks(prev => {
-              const otherTasks = prev.filter(t => t.status !== colId || (t.creatorId !== user.uid && t.assigneeId !== user.uid))
-              const assignedTasks = prev.filter(t => t.status === colId && t.assigneeId === user.uid && t.creatorId !== user.uid)
-              return [...otherTasks, ...assignedTasks, ...createdTasks].sort((a, b) => 
-                new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-              )
+            snap.docs.forEach(d => {
+              taskMapRef.current.set(d.id, { ...d.data(), id: d.id } as Task)
             })
+            // Remove tasks from this column+query that no longer exist
+            const createdIds = new Set(snap.docs.map(d => d.id))
+            for (const [id, t] of taskMapRef.current) {
+              if (t.status === colId && t.creatorId === user.uid && !createdIds.has(id)) {
+                // Only remove if not also assigned to this user
+                if (t.assigneeId !== user.uid) taskMapRef.current.delete(id)
+              }
+            }
+            rebuildTasksFromMap()
           },
           async () => {}
         )
         unsubscribes.push(unsub1)
 
-        // Student: query tasks assigned to them (by teacher or others)
+        // Student: query tasks assigned to them
         const qAssigned = query(baseCol, where("assigneeId", "==", user.uid))
         const unsub2 = onSnapshot(qAssigned, 
           (snap) => {
-            const assignedTasks = snap.docs.map(doc => ({ ...doc.data(), id: doc.id } as Task))
-            setTasks(prev => {
-              const otherTasks = prev.filter(t => t.status !== colId || (t.assigneeId !== user.uid && t.creatorId !== user.uid))
-              const createdTasks = prev.filter(t => t.status === colId && t.creatorId === user.uid && t.assigneeId !== user.uid)
-              // Deduplicate: if a task was both created and assigned to same user
-              const assignedIds = new Set(assignedTasks.map(t => t.id))
-              const uniqueCreated = createdTasks.filter(t => !assignedIds.has(t.id))
-              return [...otherTasks, ...uniqueCreated, ...assignedTasks].sort((a, b) => 
-                new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-              )
+            console.log(`[DEBUG] assigneeId query for col=${colId}, uid=${user.uid}, found=${snap.docs.length}`, snap.docs.map(d => ({id: d.id, assigneeId: d.data().assigneeId, assignee: d.data().assignee})))
+            snap.docs.forEach(d => {
+              taskMapRef.current.set(d.id, { ...d.data(), id: d.id } as Task)
             })
+            // Remove tasks from this column+query that no longer exist
+            const assignedIds = new Set(snap.docs.map(d => d.id))
+            for (const [id, t] of taskMapRef.current) {
+              if (t.status === colId && t.assigneeId === user.uid && !assignedIds.has(id)) {
+                // Only remove if not also created by this user
+                if (t.creatorId !== user.uid) taskMapRef.current.delete(id)
+              }
+            }
+            rebuildTasksFromMap()
           },
-          async () => {}
+          async (err) => { console.error('[DEBUG] assigneeId query ERROR:', colId, err) }
         )
         unsubscribes.push(unsub2)
       }
     })
 
     return () => unsubscribes.forEach(unsub => unsub())
-  }, [activeBoardId, columns, db, user, isAccessRevoked, boardData])
+  }, [activeBoardId, columns, db, user, isAccessRevoked, boardData, rebuildTasksFromMap])
+
+  // Backfill assigneeId for older tasks that only have assignee name (teacher only)
+  React.useEffect(() => {
+    if (!activeBoardId || !boardData || !user || boardData.ownerId !== user.uid) return
+    if (workspaceMembers.length === 0 || tasks.length === 0) return
+
+    tasks.forEach(task => {
+      if (task.assignee && !task.assigneeId) {
+        const member = workspaceMembers.find(m => m.name === task.assignee)
+        console.log(`[DEBUG] Backfill: task=${task.id}, assignee="${task.assignee}", foundMember=`, member)
+        if (member) {
+          const taskRef = doc(db, "boards", activeBoardId, "columns", task.status, "tasks", task.id)
+          setDoc(taskRef, { assigneeId: member.id }, { merge: true }).catch((err) => console.error('[DEBUG] Backfill write error:', err))
+        }
+      } else {
+        console.log(`[DEBUG] Task ${task.id}: assignee="${task.assignee}", assigneeId="${task.assigneeId}" (no backfill needed)`)
+      }
+    })
+  }, [tasks, workspaceMembers, activeBoardId, boardData, user, db])
 
   // Load workspace members
   React.useEffect(() => {
@@ -319,9 +358,11 @@ export function KanbanBoard({ userRole, username, rollNumber }: KanbanBoardProps
       ownerId: boardData.ownerId,
       memberIds: boardData.memberIds || [],
       creatorId: selectedTask?.creatorId || user.uid,
-      assigneeId: workspaceMembers.find(m => m.name === newTask.assignee)?.id || selectedTask?.assigneeId || user.uid,
+      assigneeId: newTask.assigneeId || workspaceMembers.find(m => m.name === newTask.assignee)?.id || user.uid,
       updatedAt: new Date().toISOString()
     }
+
+    console.log('[DEBUG] Saving task:', { id: taskData.id, assignee: taskData.assignee, assigneeId: taskData.assigneeId, creatorId: taskData.creatorId, ownerId: taskData.ownerId })
 
     setDoc(taskRef, taskData, { merge: true })
       .catch(async (err) => {
@@ -412,7 +453,7 @@ export function KanbanBoard({ userRole, username, rollNumber }: KanbanBoardProps
     setColumns(columns.filter(c => c !== name))
   }
 
-  const memberNames = workspaceMembers.map(m => m.name)
+  const memberNames = workspaceMembers.map(m => ({ id: m.id, name: m.name }))
 
   return (
     <div className="flex flex-col h-screen overflow-hidden bg-background">

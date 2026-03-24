@@ -47,6 +47,11 @@ const taskSchema = z.object({
   studentComment: z.string().optional(),
 })
 
+interface MemberOption {
+  id: string
+  name: string
+}
+
 interface TaskDialogProps {
   task?: Task
   tasks?: Task[]
@@ -58,7 +63,7 @@ interface TaskDialogProps {
   currentUsername?: string
   userRollNumber?: string
   columnOptions?: string[]
-  memberOptions?: string[]
+  memberOptions?: MemberOption[]
   isAdmin?: boolean
 }
 
@@ -147,6 +152,8 @@ export function TaskDialog({
 
   const onSubmit = (values: z.infer<typeof taskSchema>) => {
     if (!user) return;
+
+    const resolvedAssigneeId = memberOptions.find(m => m.name === values.assignee)?.id || task?.assigneeId || user.uid;
     
     const newTask: Task = {
       id: task?.id || generateRollId(),
@@ -154,6 +161,7 @@ export function TaskDialog({
       description: values.description || "",
       status: values.status,
       assignee: values.assignee,
+      assigneeId: resolvedAssigneeId,
       dueDate: values.dueDate ? new Date(values.dueDate).toISOString() : undefined,
       createdAt: task?.createdAt || new Date().toISOString(),
       teacherComment: values.teacherComment || "",
@@ -179,16 +187,6 @@ export function TaskDialog({
               <span className="text-foreground">{task ? "Edit Task" : "Create New Task"}</span>
               <span className="text-xs font-normal text-muted-foreground ml-2">ID: {task?.id || 'NEW'}</span>
             </div>
-            {task && (
-              <Button 
-                variant="ghost" 
-                size="icon" 
-                className="text-destructive hover:text-destructive hover:bg-destructive/10 transition-colors md:hidden" 
-                onClick={handleDelete}
-              >
-                <Trash2 className="h-4 w-4" />
-              </Button>
-            )}
           </DialogTitle>
         </DialogHeader>
 
@@ -263,8 +261,8 @@ export function TaskDialog({
                         </FormControl>
                         <SelectContent>
                           {memberOptions && memberOptions.length > 0 ? (
-                            memberOptions.map((name) => (
-                                <SelectItem key={name} value={name}>{name}</SelectItem>
+                            memberOptions.map((member) => (
+                                <SelectItem key={member.id} value={member.name}>{member.name}</SelectItem>
                             ))
                           ) : (
                             <SelectItem value={currentUsername || "User"}>{currentUsername || "User"}</SelectItem>
