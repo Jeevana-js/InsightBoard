@@ -100,6 +100,11 @@ export default function LoginPage() {
         }
       }
     } catch (error: any) {
+      // If the user closed the popup, we don't need to show an error toast
+      if (error.code === 'auth/popup-closed-by-user') {
+        return
+      }
+      
       toast({
         variant: "destructive",
         title: "Google Login Failed",
