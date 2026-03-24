@@ -179,7 +179,7 @@ export function TaskDialog({
               <Button 
                 variant="ghost" 
                 size="icon" 
-                className="text-destructive hover:text-destructive hover:bg-destructive/10 transition-colors" 
+                className="text-destructive hover:text-destructive hover:bg-destructive/10 transition-colors md:hidden" 
                 onClick={handleDelete}
               >
                 <Trash2 className="h-4 w-4" />
@@ -338,7 +338,18 @@ export function TaskDialog({
             </div>
             
             <DialogFooter className="sticky bottom-0 z-10 -mx-6 mt-auto p-6 border-t bg-background/80 backdrop-blur-md">
-              <div className="flex justify-end gap-3 w-full">
+              <div className="flex items-center justify-end gap-3 w-full">
+                {task && (
+                  <Button 
+                    type="button" 
+                    variant="ghost" 
+                    className="mr-auto text-destructive hover:text-destructive hover:bg-destructive/10 transition-colors"
+                    onClick={handleDelete}
+                  >
+                    <Trash2 className="h-4 w-4 mr-2" />
+                    Delete Task
+                  </Button>
+                )}
                 <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
                 <Button type="submit">{task ? "Update Task" : "Create Task"}</Button>
               </div>
