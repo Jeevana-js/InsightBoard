@@ -6,9 +6,11 @@ export interface Task {
   description: string;
   status: TaskStatus;
   assignee?: string;
+  assigneeId?: string;
   dueDate?: string;
   createdAt: string;
   teacherComment?: string;
+  studentComment?: string;
   creatorId?: string;
 }
 

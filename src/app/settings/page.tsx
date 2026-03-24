@@ -3,6 +3,7 @@
 
 import * as React from "react"
 import Link from "next/link"
+import { useRouter } from "next/navigation"
 import { 
   ChevronLeft, 
   Shield, 
@@ -18,14 +19,15 @@ import {
   Star,
   Moon,
   Sun,
-  Monitor
+  Monitor,
+  AlertCircle
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Separator } from "@/components/ui/separator"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { 
   Table, 
   TableBody, 
@@ -44,8 +46,9 @@ import {
 import { Badge } from "@/components/ui/badge"
 import { useToast } from "@/hooks/use-toast"
 import { Member } from "@/types/task"
-import { useUser, useFirestore, useDoc, useMemoFirebase } from "@/firebase"
-import { doc, updateDoc, arrayUnion, getDoc, collection, query, where, getDocs, arrayRemove } from "firebase/firestore"
+import { useUser, useFirestore, useDoc, useMemoFirebase, useAuth } from "@/firebase"
+import { doc, updateDoc, arrayUnion, getDoc, collection, query, where, getDocs, arrayRemove, onSnapshot } from "firebase/firestore"
+import { signOut } from "firebase/auth"
 import { errorEmitter } from "@/firebase/error-emitter"
 import { FirestorePermissionError } from "@/firebase/errors"
 import { cn } from "@/lib/utils"
@@ -58,10 +61,14 @@ export default function SettingsPage() {
   const [isJoining, setIsJoining] = React.useState(false)
   const [isMembersLoading, setIsMembersLoading] = React.useState(false)
   const [activeBoardId, setActiveBoardId] = React.useState<string | null>(null)
+  const [boardData, setBoardData] = React.useState<any>(null)
+  const [isAccessRevoked, setIsAccessRevoked] = React.useState(false)
   const [mounted, setMounted] = React.useState(false)
   
   const { user } = useUser()
+  const auth = useAuth()
   const db = useFirestore()
+  const router = useRouter()
   const { toast } = useToast()
   const { theme, setTheme } = useTheme()
 
@@ -102,37 +109,52 @@ export default function SettingsPage() {
     findActiveBoard()
   }, [user, db])
 
-  // Fetch all board members
+  // Real-time board listener for live membership updates & access revocation
   React.useEffect(() => {
-    const loadBoardAndMembers = async () => {
-      if (!user || !profile || !activeBoardId) return;
+    if (!activeBoardId || !user) return
+    const unsub = onSnapshot(doc(db, "boards", activeBoardId), (snap) => {
+      if (snap.exists()) {
+        const data = snap.data()
+        setBoardData(data)
+        const isOwner = data.ownerId === user.uid
+        const isMember = data.memberIds?.includes(user.uid)
+        if (!isOwner && !isMember) {
+          setIsAccessRevoked(true)
+        } else {
+          setIsAccessRevoked(false)
+        }
+      } else {
+        setIsAccessRevoked(true)
+      }
+    })
+    return () => unsub()
+  }, [activeBoardId, db, user])
+
+  // Fetch all board members (re-runs when boardData changes in real-time)
+  React.useEffect(() => {
+    const loadMembers = async () => {
+      if (!user || !profile || !activeBoardId || !boardData || isAccessRevoked) return;
       
       setIsMembersLoading(true)
       try {
-        const boardRef = doc(db, "boards", activeBoardId);
-        const boardSnap = await getDoc(boardRef);
+        const allMemberIds = Array.from(new Set([boardData.ownerId, ...(boardData.memberIds || [])]));
+        const memberProfiles: Member[] = [];
         
-        if (boardSnap.exists()) {
-          const bData = boardSnap.data();
-          const allMemberIds = Array.from(new Set([bData.ownerId, ...(bData.memberIds || [])]));
-          const memberProfiles: Member[] = [];
-          
-          for (const mId of allMemberIds) {
-            const uDoc = await getDoc(doc(db, "users", mId));
-            if (uDoc.exists()) {
-              const uData = uDoc.data();
-              memberProfiles.push({
-                id: uData.id,
-                name: uData.username || "User",
-                email: uData.email || "",
-                role: uData.role === 'admin' ? 'Admin' : 'Member',
-                status: 'Active',
-                rating: uData.rating || 0
-              });
-            }
+        for (const mId of allMemberIds) {
+          const uDoc = await getDoc(doc(db, "users", mId));
+          if (uDoc.exists()) {
+            const uData = uDoc.data();
+            memberProfiles.push({
+              id: uData.id,
+              name: uData.username || "User",
+              email: uData.email || "",
+              role: uData.role === 'admin' ? 'Admin' : 'Member',
+              status: 'Active',
+              rating: uData.rating || 0
+            });
           }
-          setMembers(memberProfiles);
         }
+        setMembers(memberProfiles);
       } catch (err) {
         // Silently handle
       } finally {
@@ -140,8 +162,8 @@ export default function SettingsPage() {
       }
     };
 
-    loadBoardAndMembers();
-  }, [user, profile, db, activeBoardId]);
+    loadMembers();
+  }, [user, profile, db, activeBoardId, boardData, isAccessRevoked]);
 
   const roomInviteCode = activeBoardId || user?.uid || ""
 
@@ -276,7 +298,7 @@ export default function SettingsPage() {
       updatedAt: new Date().toISOString()
     })
     .then(() => {
-      setMembers(members.filter(m => m.id !== memberId))
+      setMembers(prev => prev.filter(m => m.id !== memberId))
       toast({
         variant: "destructive",
         title: "Member Removed",
@@ -308,6 +330,21 @@ export default function SettingsPage() {
       </div>
     )
   }
+
+  // Auto-redirect removed members to login with notification
+  React.useEffect(() => {
+    if (!isAccessRevoked) return
+    toast({
+      variant: "destructive",
+      title: "Access Revoked",
+      description: "You are no longer a member of this room. Please contact your teacher.",
+    })
+    signOut(auth).then(() => {
+      router.push("/login")
+    }).catch(() => {
+      router.push("/login")
+    })
+  }, [isAccessRevoked, auth, router, toast])
 
   return (
     <div className="min-h-screen bg-background flex flex-col">

@@ -142,31 +142,65 @@ export function KanbanBoard({ userRole, username, rollNumber }: KanbanBoardProps
     columns.forEach(colId => {
       const baseCol = collection(db, "boards", activeBoardId, "columns", colId, "tasks")
       
-      // Privacy logic: Board Owners (Teachers) see all tasks in their board.
-      // Members (Students) ONLY see tasks they personally created.
-      const q = (boardData.ownerId === user.uid)
-        ? query(baseCol, where("ownerId", "==", user.uid))
-        : query(baseCol, where("creatorId", "==", user.uid))
+      if (boardData.ownerId === user.uid) {
+        // Teacher sees all tasks on their board
+        const q = query(baseCol, where("ownerId", "==", user.uid))
+        const unsub = onSnapshot(q, 
+          (snap) => {
+            const colTasks = snap.docs.map(doc => ({ ...doc.data(), id: doc.id } as Task))
+            setTasks(prev => {
+              const otherTasks = prev.filter(t => t.status !== colId)
+              return [...otherTasks, ...colTasks].sort((a, b) => 
+                new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+              )
+            })
+          },
+          async (serverError) => {
+            errorEmitter.emit('permission-error', new FirestorePermissionError({
+              path: `boards/${activeBoardId}/columns/${colId}/tasks`,
+              operation: 'list',
+            }));
+          }
+        )
+        unsubscribes.push(unsub)
+      } else {
+        // Student: query tasks they created
+        const qCreated = query(baseCol, where("creatorId", "==", user.uid))
+        const unsub1 = onSnapshot(qCreated, 
+          (snap) => {
+            const createdTasks = snap.docs.map(doc => ({ ...doc.data(), id: doc.id } as Task))
+            setTasks(prev => {
+              const otherTasks = prev.filter(t => t.status !== colId || (t.creatorId !== user.uid && t.assigneeId !== user.uid))
+              const assignedTasks = prev.filter(t => t.status === colId && t.assigneeId === user.uid && t.creatorId !== user.uid)
+              return [...otherTasks, ...assignedTasks, ...createdTasks].sort((a, b) => 
+                new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+              )
+            })
+          },
+          async () => {}
+        )
+        unsubscribes.push(unsub1)
 
-      const unsub = onSnapshot(q, 
-        (snap) => {
-          const colTasks = snap.docs.map(doc => ({ ...doc.data(), id: doc.id } as Task))
-          setTasks(prev => {
-            const otherTasks = prev.filter(t => t.status !== colId)
-            return [...otherTasks, ...colTasks].sort((a, b) => 
-              new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-            )
-          })
-        },
-        async (serverError) => {
-          const permissionError = new FirestorePermissionError({
-            path: `boards/${activeBoardId}/columns/${colId}/tasks`,
-            operation: 'list',
-          });
-          errorEmitter.emit('permission-error', permissionError);
-        }
-      )
-      unsubscribes.push(unsub)
+        // Student: query tasks assigned to them (by teacher or others)
+        const qAssigned = query(baseCol, where("assigneeId", "==", user.uid))
+        const unsub2 = onSnapshot(qAssigned, 
+          (snap) => {
+            const assignedTasks = snap.docs.map(doc => ({ ...doc.data(), id: doc.id } as Task))
+            setTasks(prev => {
+              const otherTasks = prev.filter(t => t.status !== colId || (t.assigneeId !== user.uid && t.creatorId !== user.uid))
+              const createdTasks = prev.filter(t => t.status === colId && t.creatorId === user.uid && t.assigneeId !== user.uid)
+              // Deduplicate: if a task was both created and assigned to same user
+              const assignedIds = new Set(assignedTasks.map(t => t.id))
+              const uniqueCreated = createdTasks.filter(t => !assignedIds.has(t.id))
+              return [...otherTasks, ...uniqueCreated, ...assignedTasks].sort((a, b) => 
+                new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+              )
+            })
+          },
+          async () => {}
+        )
+        unsubscribes.push(unsub2)
+      }
     })
 
     return () => unsubscribes.forEach(unsub => unsub())
@@ -220,6 +254,21 @@ export function KanbanBoard({ userRole, username, rollNumber }: KanbanBoardProps
     }
   }
 
+  // Auto-redirect removed members to login with notification
+  React.useEffect(() => {
+    if (!isAccessRevoked) return
+    toast({
+      variant: "destructive",
+      title: "Access Revoked",
+      description: "You are no longer a member of this room. Please contact your teacher.",
+    })
+    signOut(auth).then(() => {
+      router.push("/login")
+    }).catch(() => {
+      router.push("/login")
+    })
+  }, [isAccessRevoked, auth, router, toast])
+
   if (isFindingBoard) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
@@ -227,43 +276,6 @@ export function KanbanBoard({ userRole, username, rollNumber }: KanbanBoardProps
           <Loader2 className="h-10 w-10 animate-spin text-primary mx-auto" />
           <p className="text-muted-foreground font-medium">Syncing Workspace...</p>
         </div>
-      </div>
-    )
-  }
-
-  if (isAccessRevoked) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-muted/20 p-4">
-        <Card className="max-w-md w-full shadow-2xl border-t-4 border-t-destructive animate-in fade-in slide-in-from-bottom-4 duration-500">
-          <CardHeader className="text-center space-y-4">
-            <div className="mx-auto h-16 w-16 bg-destructive/10 rounded-full flex items-center justify-center">
-              <AlertCircle className="h-10 w-10 text-destructive" />
-            </div>
-            <div className="space-y-2">
-              <CardTitle className="text-2xl font-bold">Access Revoked</CardTitle>
-              <CardDescription className="text-lg font-medium">
-                You are no longer in this group.
-              </CardDescription>
-            </div>
-          </CardHeader>
-          <CardContent className="text-center">
-            <p className="text-sm text-muted-foreground leading-relaxed">
-              An administrator has removed your account from this workspace. You can no longer view or interact with this board.
-            </p>
-          </CardContent>
-          <CardFooter className="flex flex-col gap-3">
-            <Button onClick={handleLogout} className="w-full h-12 text-base font-semibold" variant="destructive">
-              <LogOut className="h-5 w-5 mr-2" />
-              Sign Out
-            </Button>
-            <Button asChild variant="ghost" className="w-full text-primary hover:text-primary hover:bg-primary/5">
-              <Link href="/settings">
-                <SlidersHorizontal className="h-4 w-4 mr-2" />
-                Join Another Workspace
-              </Link>
-            </Button>
-          </CardFooter>
-        </Card>
       </div>
     )
   }
@@ -307,6 +319,7 @@ export function KanbanBoard({ userRole, username, rollNumber }: KanbanBoardProps
       ownerId: boardData.ownerId,
       memberIds: boardData.memberIds || [],
       creatorId: selectedTask?.creatorId || user.uid,
+      assigneeId: workspaceMembers.find(m => m.name === newTask.assignee)?.id || selectedTask?.assigneeId || user.uid,
       updatedAt: new Date().toISOString()
     }
 
@@ -359,6 +372,7 @@ export function KanbanBoard({ userRole, username, rollNumber }: KanbanBoardProps
       ownerId: boardData.ownerId,
       memberIds: boardData.memberIds || [],
       creatorId: task.creatorId || user?.uid,
+      assigneeId: task.assigneeId || workspaceMembers.find(m => m.name === task.assignee)?.id || user?.uid,
       updatedAt: new Date().toISOString()
     }
     
@@ -508,6 +522,7 @@ export function KanbanBoard({ userRole, username, rollNumber }: KanbanBoardProps
             />
           </div>
 
+          <div className="flex items-center gap-3 ml-auto">
           {isBoardOwner && (
             <div className="w-[240px]">
               <Select value={assigneeFilter} onValueChange={setAssigneeFilter}>
@@ -537,7 +552,7 @@ export function KanbanBoard({ userRole, username, rollNumber }: KanbanBoardProps
             </div>
           )}
           
-          <div className="flex bg-muted/30 p-1 rounded-md ml-auto border shadow-sm h-10 items-center">
+          <div className="flex bg-muted/30 p-1 rounded-md border shadow-sm h-10 items-center">
             <Button 
               variant="ghost" 
               size="sm" 
@@ -560,6 +575,7 @@ export function KanbanBoard({ userRole, username, rollNumber }: KanbanBoardProps
             >
               <List className="h-4 w-4" />
             </Button>
+          </div>
           </div>
         </div>
       </header>

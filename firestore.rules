@@ -38,7 +38,8 @@ service cloud.firestore {
     function canStudentSeeTask(data) {
       return isSignedIn() && (
         request.auth.uid == data.ownerId || // The board owner (teacher)
-        request.auth.uid == data.creatorId   // The individual student who created it
+        request.auth.uid == data.creatorId || // The individual student who created it
+        request.auth.uid == data.assigneeId   // The student assigned to this task
       );
     }
 

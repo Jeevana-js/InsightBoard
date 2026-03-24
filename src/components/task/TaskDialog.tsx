@@ -44,6 +44,7 @@ const taskSchema = z.object({
   assignee: z.string().min(1, "Assignee is required"),
   dueDate: z.string().min(1, "Due Date is required"),
   teacherComment: z.string().optional(),
+  studentComment: z.string().optional(),
 })
 
 interface TaskDialogProps {
@@ -87,6 +88,7 @@ export function TaskDialog({
       assignee: task?.assignee || currentUsername || "",
       dueDate: task?.dueDate ? format(new Date(task.dueDate), "yyyy-MM-dd") : "",
       teacherComment: task?.teacherComment || "",
+      studentComment: task?.studentComment || "",
     },
   })
 
@@ -99,6 +101,7 @@ export function TaskDialog({
         assignee: task?.assignee || currentUsername || "",
         dueDate: task?.dueDate ? format(new Date(task.dueDate), "yyyy-MM-dd") : "",
         teacherComment: task?.teacherComment || "",
+        studentComment: task?.studentComment || "",
       })
     }
   }, [open, task, defaultStatus, form, currentUsername, columnOptions])
@@ -154,6 +157,7 @@ export function TaskDialog({
       dueDate: values.dueDate ? new Date(values.dueDate).toISOString() : undefined,
       createdAt: task?.createdAt || new Date().toISOString(),
       teacherComment: values.teacherComment || "",
+      studentComment: values.studentComment || "",
       creatorId: task?.creatorId || user.uid,
     }
     onSave(newTask)
@@ -254,7 +258,7 @@ export function TaskDialog({
                       >
                         <FormControl>
                           <SelectTrigger>
-                            <SelectValue placeholder="Select assignee" />
+                            <SelectValue placeholder="Select assignee">{field.value || "Select assignee"}</SelectValue>
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent>
@@ -313,24 +317,15 @@ export function TaskDialog({
                   <FormItem className="bg-amber-50/50 dark:bg-amber-950/20 p-4 rounded-xl border border-amber-100 dark:border-amber-900/50 space-y-3">
                     <FormLabel className="text-amber-900 dark:text-amber-400 flex items-center gap-2 font-bold">
                       <MessageSquareQuote className="h-4 w-4" />
-                      Teacher&apos;s Feedback & Comments
+                      Comments
                     </FormLabel>
                     <FormControl>
-                      {isAdmin ? (
-                        <Textarea 
-                          placeholder="Add feedback for the student..." 
-                          className="min-h-[120px] resize-none bg-white dark:bg-card border-amber-200 dark:border-amber-900/50 focus-visible:ring-amber-400" 
-                          {...field} 
-                        />
-                      ) : (
-                        <div className="p-3 bg-white/80 dark:bg-card/80 rounded-lg border border-amber-100 dark:border-amber-900/50 min-h-[80px] text-sm text-foreground/80 leading-relaxed whitespace-pre-wrap italic">
-                          {field.value || "No feedback provided yet."}
-                        </div>
-                      )}
+                      <Textarea 
+                        placeholder="Add a comment..." 
+                        className="min-h-[120px] resize-none bg-white dark:bg-card border-amber-200 dark:border-amber-900/50 focus-visible:ring-amber-400" 
+                        {...field} 
+                      />
                     </FormControl>
-                    <p className="text-[10px] text-amber-700/70 dark:text-amber-400/70 italic px-1">
-                      {isAdmin ? "Only you can edit this section." : "Only your teacher can edit this section."}
-                    </p>
                     <FormMessage />
                   </FormItem>
                 )}
