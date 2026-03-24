@@ -58,11 +58,17 @@ export default function SettingsPage() {
   const [isJoining, setIsJoining] = React.useState(false)
   const [isMembersLoading, setIsMembersLoading] = React.useState(false)
   const [activeBoardId, setActiveBoardId] = React.useState<string | null>(null)
+  const [mounted, setMounted] = React.useState(false)
   
   const { user } = useUser()
   const db = useFirestore()
   const { toast } = useToast()
   const { theme, setTheme } = useTheme()
+
+  // Prevent hydration mismatch
+  React.useEffect(() => {
+    setMounted(true)
+  }, [])
 
   const profileRef = useMemoFirebase(() => {
     if (!user) return null
@@ -407,7 +413,7 @@ export default function SettingsPage() {
                     <Label>Theme Mode</Label>
                     <div className="grid grid-cols-3 gap-4">
                       <Button 
-                        variant={theme === 'light' ? 'default' : 'outline'} 
+                        variant={mounted && theme === 'light' ? 'default' : 'outline'} 
                         className="h-20 flex-col gap-2"
                         onClick={() => setTheme('light')}
                       >
@@ -415,7 +421,7 @@ export default function SettingsPage() {
                         <span className="text-xs">Light</span>
                       </Button>
                       <Button 
-                        variant={theme === 'dark' ? 'default' : 'outline'} 
+                        variant={mounted && theme === 'dark' ? 'default' : 'outline'} 
                         className="h-20 flex-col gap-2"
                         onClick={() => setTheme('dark')}
                       >
@@ -423,7 +429,7 @@ export default function SettingsPage() {
                         <span className="text-xs">Dark</span>
                       </Button>
                       <Button 
-                        variant={theme === 'system' ? 'default' : 'outline'} 
+                        variant={mounted && theme === 'system' ? 'default' : 'outline'} 
                         className="h-20 flex-col gap-2"
                         onClick={() => setTheme('system')}
                       >
