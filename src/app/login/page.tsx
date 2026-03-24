@@ -38,9 +38,13 @@ export default function LoginPage() {
   React.useEffect(() => {
     if (currentUser && !showRoleSelection && !isUserLoading) {
       const checkProfile = async () => {
-        const docSnap = await getDoc(doc(db, "users", currentUser.uid))
-        if (docSnap.exists()) {
-          router.push("/")
+        try {
+          const docSnap = await getDoc(doc(db, "users", currentUser.uid))
+          if (docSnap.exists()) {
+            router.push("/")
+          }
+        } catch (err) {
+          // Profile might not exist yet, onboarding will handle it
         }
       }
       checkProfile()
@@ -68,18 +72,30 @@ export default function LoginPage() {
     setIsLoading(true)
     try {
       const provider = new GoogleAuthProvider()
+      // Force account selection to refresh stale tokens and ensure a clean session
+      provider.setCustomParameters({ prompt: 'select_account' })
+      
       const result = await signInWithPopup(auth, provider)
       const user = result.user
+
+      if (!user) {
+        throw new Error("Could not retrieve user information from Google.")
+      }
+
+      // Small delay to ensure the auth token is synchronized with Firestore permissions
+      await new Promise(resolve => setTimeout(resolve, 500))
 
       const userDoc = await getDoc(doc(db, "users", user.uid))
       
       if (userDoc.exists()) {
         router.push("/")
       } else {
+        // If profile doesn't exist, check if they are already members of any board (invited)
         const q = query(collection(db, "boards"), where("memberIds", "array-contains", user.uid))
         const memberSnap = await getDocs(q)
         
         if (!memberSnap.empty) {
+          // Automatically create a minimal profile if they were already invited to a board
           await setDoc(doc(db, "users", user.uid), {
             id: user.uid,
             username: user.displayName || "User",
@@ -91,6 +107,7 @@ export default function LoginPage() {
           })
           router.push("/")
         } else {
+          // Otherwise, proceed to onboarding to select role/details
           setTempGoogleUser(user)
           setOnboardingData(prev => ({
             ...prev,
@@ -100,15 +117,16 @@ export default function LoginPage() {
         }
       }
     } catch (error: any) {
-      // If the user closed the popup, we don't need to show an error toast
+      // Gracefully handle manual popup closure
       if (error.code === 'auth/popup-closed-by-user') {
+        setIsLoading(false)
         return
       }
       
       toast({
         variant: "destructive",
         title: "Google Login Failed",
-        description: error.message,
+        description: error.message || "An error occurred during sign-in.",
       })
     } finally {
       setIsLoading(false)
