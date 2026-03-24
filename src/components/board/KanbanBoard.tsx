@@ -406,7 +406,7 @@ export function KanbanBoard({ userRole, username, rollNumber }: KanbanBoardProps
         <div className="flex justify-between items-center">
           <div className="flex items-center gap-4">
             <div className="h-10 w-10 bg-primary rounded-xl flex items-center justify-center shadow-lg transform -rotate-3">
-              <LayoutGrid className="h-6 w-6 text-white" />
+              <LayoutGrid className="h-6 w-6 text-primary-foreground" />
             </div>
             <div>
               <div className="flex items-center gap-2">
@@ -524,7 +524,7 @@ export function KanbanBoard({ userRole, username, rollNumber }: KanbanBoardProps
                       <div className="flex items-center justify-between w-full gap-4">
                         <span className="truncate">{member.name}</span>
                         {member.role === 'admin' && (
-                          <span className="text-[9px] font-bold text-primary group-focus:text-white border border-primary/20 group-focus:border-white/40 bg-primary/10 group-focus:bg-white/20 px-1.5 py-0.5 rounded uppercase flex items-center gap-1 shrink-0 transition-colors">
+                          <span className="text-[9px] font-bold text-primary group-focus:text-primary-foreground border border-primary/20 group-focus:border-white/40 bg-primary/10 group-focus:bg-white/20 px-1.5 py-0.5 rounded uppercase flex items-center gap-1 shrink-0 transition-colors">
                             <ShieldCheck className="h-2.5 w-2.5" />
                             Admin
                           </span>

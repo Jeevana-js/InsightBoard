@@ -127,7 +127,7 @@ export default function SignupPage() {
         <CardHeader className="space-y-1 text-center">
           <div className="flex justify-center mb-4">
             <div className="h-12 w-12 bg-primary rounded-xl flex items-center justify-center shadow-lg">
-              <LayoutGrid className="h-7 w-7 text-white" />
+              <LayoutGrid className="h-7 w-7 text-primary-foreground" />
             </div>
           </div>
           <CardTitle className="text-2xl font-bold tracking-tight">Create Your Account</CardTitle>
