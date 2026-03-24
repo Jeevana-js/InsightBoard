@@ -11,7 +11,7 @@ import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { useAuth, useUser, useFirestore } from "@/firebase"
-import { signInWithEmailAndPassword, GoogleAuthProvider, signInWithRedirect, getRedirectResult, updateProfile, User } from "firebase/auth"
+import { signInWithEmailAndPassword, GoogleAuthProvider, signInWithPopup, getRedirectResult, updateProfile, User } from "firebase/auth"
 import { doc, getDoc, setDoc, updateDoc, arrayUnion, collection, query, where, getDocs } from "firebase/firestore"
 import { useToast } from "@/hooks/use-toast"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
@@ -37,7 +37,7 @@ export default function LoginPage() {
   const router = useRouter()
   const { toast } = useToast()
 
-  // Handle Redirect Result on Mount
+  // Handle Redirect Result on Mount (as a fallback)
   React.useEffect(() => {
     let isMounted = true;
     const checkRedirect = async () => {
@@ -47,15 +47,12 @@ export default function LoginPage() {
           const user = result.user
           setIsLoading(true)
 
-          // Check if user exists in Firestore
           const userDoc = await getDoc(doc(db, "users", user.uid))
-          
           if (userDoc.exists()) {
             router.push("/")
             return
           }
 
-          // Check if they were already invited (member of a board)
           const q = query(collection(db, "boards"), where("memberIds", "array-contains", user.uid))
           const memberSnap = await getDocs(q)
           
@@ -71,7 +68,6 @@ export default function LoginPage() {
             })
             router.push("/")
           } else {
-            // Need onboarding
             setTempGoogleUser(user)
             setOnboardingData(prev => ({ ...prev, username: user.displayName || "" }))
             setShowRoleSelection(true)
@@ -96,7 +92,7 @@ export default function LoginPage() {
     return () => { isMounted = false; }
   }, [auth, db, router, toast])
 
-  // If already signed in (not via redirect result, but normal session)
+  // Watch for currentUser settle
   React.useEffect(() => {
     if (currentUser && !showRoleSelection && !isUserLoading && !tempGoogleUser && !isProcessingRedirect) {
       const checkProfile = async () => {
@@ -105,13 +101,12 @@ export default function LoginPage() {
           if (docSnap.exists()) {
             router.push("/")
           } else {
-            // Logged in but no profile - show selection
             setTempGoogleUser(currentUser)
             setOnboardingData(prev => ({ ...prev, username: currentUser.displayName || "" }))
             setShowRoleSelection(true)
           }
         } catch (err) {
-          // Stay on page
+          // Profile check might fail if firestore hasn't synced auth yet
         }
       }
       checkProfile()
@@ -142,14 +137,44 @@ export default function LoginPage() {
     try {
       const provider = new GoogleAuthProvider()
       provider.setCustomParameters({ prompt: 'select_account' })
-      await signInWithRedirect(auth, provider)
+      const result = await signInWithPopup(auth, provider)
+      const user = result.user
+
+      const userDoc = await getDoc(doc(db, "users", user.uid))
+      if (userDoc.exists()) {
+        router.push("/")
+        return
+      }
+
+      const q = query(collection(db, "boards"), where("memberIds", "array-contains", user.uid))
+      const memberSnap = await getDocs(q)
+      
+      if (!memberSnap.empty) {
+        await setDoc(doc(db, "users", user.uid), {
+          id: user.uid,
+          username: user.displayName || "User",
+          email: user.email,
+          rollNumber: "PENDING",
+          role: 'member',
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString()
+        })
+        router.push("/")
+      } else {
+        setTempGoogleUser(user)
+        setOnboardingData(prev => ({ ...prev, username: user.displayName || "" }))
+        setShowRoleSelection(true)
+      }
     } catch (error: any) {
+      if (error.code !== 'auth/popup-closed-by-user') {
+        toast({
+          variant: "destructive",
+          title: "Google Login Failed",
+          description: error.message || "An error occurred during sign-in.",
+        })
+      }
+    } finally {
       setIsLoading(false)
-      toast({
-        variant: "destructive",
-        title: "Google Login Failed",
-        description: error.message || "An error occurred during sign-in.",
-      })
     }
   }
 
@@ -239,7 +264,7 @@ export default function LoginPage() {
   if (showRoleSelection) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-muted/40 p-4 py-12">
-        <Card className="w-full max-w-md shadow-xl border-t-4 border-t-primary animate-in fade-in slide-in-from-bottom-4 duration-500">
+        <Card className="w-full max-w-md shadow-xl border-t-4 border-t-primary">
           <CardHeader className="space-y-1 text-center">
             <div className="flex justify-center mb-4">
               <div className="h-12 w-12 bg-primary rounded-xl flex items-center justify-center shadow-lg">
@@ -406,7 +431,7 @@ export default function LoginPage() {
             {isLoading ? (
               <Loader2 className="mr-2 h-4 w-4 animate-spin" />
             ) : (
-              <svg className="mr-2 h-4 w-4" aria-hidden="true" focusable="false" data-prefix="fab" data-icon="google" role="img" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 488 512">
+              <svg className="mr-2 h-4 w-4" viewBox="0 0 488 512">
                 <path fill="currentColor" d="M488 261.8C488 403.3 391.1 504 248 504 110.8 504 0 393.2 0 256S110.8 8 248 8c66.8 0 123 24.5 166.3 64.9l-67.5 64.9C258.5 52.6 94.3 116.6 94.3 256c0 86.5 69.1 156.6 153.7 156.6 98.2 0 135-70.4 140.8-106.9H248v-85.3h236.1c2.3 12.7 3.9 24.9 3.9 41.4z"></path>
               </svg>
             )}

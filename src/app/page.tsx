@@ -22,12 +22,12 @@ export default function Home() {
   const { data: profile, isLoading: isProfileLoading } = useDoc(profileRef)
 
   React.useEffect(() => {
-    // Increase delay to handle redirect-login settlement more reliably.
-    // If we've finished loading and there's no user, then redirect.
+    // Wait for auth to settle. If we've definitely finished loading and there's no user, redirect.
+    // We use a slightly longer buffer (2.5s) to account for slow session synchronization across windows.
     if (!isUserLoading && !user) {
       const timeout = setTimeout(() => {
         router.push("/login")
-      }, 2000)
+      }, 2500)
       return () => clearTimeout(timeout)
     }
   }, [user, isUserLoading, router])
@@ -44,7 +44,7 @@ export default function Home() {
     )
   }
 
-  // If no user after loading, let the useEffect handle the redirect.
+  // If no user after loading, the useEffect will handle the redirect.
   if (!user) return null
 
   // If we have a user but no profile (newly signed up or finishing redirect)
@@ -54,10 +54,10 @@ export default function Home() {
         <div className="text-center space-y-4 max-w-sm">
           <Loader2 className="h-10 w-10 animate-spin text-primary mx-auto" />
           <p className="text-lg font-semibold">Preparing your profile...</p>
-          <p className="text-sm text-muted-foreground">If you're new, we're setting things up. If this takes more than a few seconds, you may need to complete setup.</p>
+          <p className="text-sm text-muted-foreground">If you're new, we're setting things up. This may take a moment.</p>
           <button 
             onClick={() => router.push("/login")}
-            className="text-primary underline text-sm"
+            className="text-primary underline text-sm mt-4 block mx-auto"
           >
             Go to setup
           </button>
