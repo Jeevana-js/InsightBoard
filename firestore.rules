@@ -1,4 +1,3 @@
-
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
@@ -14,7 +13,7 @@ service cloud.firestore {
     }
 
     /**
-     * Checks if the requester has the 'admin' role.
+     * Checks if the requester has the 'admin' role globally.
      */
     function isAdmin() {
       return isSignedIn() && 
@@ -67,7 +66,7 @@ service cloud.firestore {
     }
 
     match /boards/{boardId}/columns/{columnId} {
-      allow get, list: if isBoardCollaborator(resource.data);
+      allow get, list: if isBoardCollaborator(resource.data) || isBoardCollaborator(get(/databases/$(database)/documents/boards/$(boardId)).data);
       allow create: if isBoardCollaborator(request.resource.data);
       allow update: if isBoardCollaborator(resource.data);
       allow delete: if isBoardCollaborator(resource.data);
@@ -75,9 +74,11 @@ service cloud.firestore {
 
     match /boards/{boardId}/columns/{columnId}/tasks/{taskId} {
       // READ: Students only see tasks they created. Teachers see everything on their board.
-      allow read: if canStudentSeeTask(resource.data);
+      // Important: Students often need to 'list' based on creatorId.
+      allow read, list: if canStudentSeeTask(resource.data);
       
       // WRITE: User must be a member and either be the creator or the board owner.
+      // Firestore 'write' covers both 'create' and 'update'.
       allow create, update: if isBoardCollaborator(request.resource.data) && (
         request.auth.uid == request.resource.data.creatorId || 
         request.auth.uid == request.resource.data.ownerId

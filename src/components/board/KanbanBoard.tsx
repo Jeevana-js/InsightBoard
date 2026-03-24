@@ -76,10 +76,11 @@ export function KanbanBoard({ userRole, username, rollNumber }: KanbanBoardProps
 
   const isAdmin = userRole === 'admin'
   const isBoardOwner = boardData?.ownerId === user?.uid
-  const boardTitle = isAdmin && isBoardOwner ? "All Members Board" : "My workspace"
+  const boardTitle = isBoardOwner ? "All Members Board" : "My workspace"
   
   const roomInviteCode = activeBoardId || ""
 
+  // Discover the active board/workspace
   React.useEffect(() => {
     const findBoard = async () => {
       if (!user) return
@@ -107,6 +108,7 @@ export function KanbanBoard({ userRole, username, rollNumber }: KanbanBoardProps
     findBoard()
   }, [user, db])
 
+  // Sync board data and handle access revocation
   React.useEffect(() => {
     if (!activeBoardId || !user) return
     const unsub = onSnapshot(doc(db, "boards", activeBoardId), (snap) => {
@@ -131,6 +133,7 @@ export function KanbanBoard({ userRole, username, rollNumber }: KanbanBoardProps
     return () => unsub()
   }, [activeBoardId, db, user])
 
+  // Sync tasks with privacy logic
   React.useEffect(() => {
     if (!activeBoardId || !user || isAccessRevoked || !boardData) return
 
@@ -139,6 +142,8 @@ export function KanbanBoard({ userRole, username, rollNumber }: KanbanBoardProps
     columns.forEach(colId => {
       const baseCol = collection(db, "boards", activeBoardId, "columns", colId, "tasks")
       
+      // Privacy logic: Board Owners (Teachers) see all tasks in their board.
+      // Members (Students) ONLY see tasks they personally created.
       const q = (boardData.ownerId === user.uid)
         ? query(baseCol, where("ownerId", "==", user.uid))
         : query(baseCol, where("creatorId", "==", user.uid))
@@ -167,6 +172,7 @@ export function KanbanBoard({ userRole, username, rollNumber }: KanbanBoardProps
     return () => unsubscribes.forEach(unsub => unsub())
   }, [activeBoardId, columns, db, user, isAccessRevoked, boardData])
 
+  // Load workspace members
   React.useEffect(() => {
     if (!boardData || !db || isAccessRevoked) return
     
@@ -285,6 +291,7 @@ export function KanbanBoard({ userRole, username, rollNumber }: KanbanBoardProps
 
     const taskRef = doc(db, "boards", activeBoardId, "columns", newTask.status, "tasks", newTask.id)
     
+    // Handle status change by moving the document
     if (selectedTask && selectedTask.status !== newTask.status) {
       const oldRef = doc(db, "boards", activeBoardId, "columns", selectedTask.status, "tasks", selectedTask.id)
       deleteDoc(oldRef).catch(async (err) => {
@@ -416,12 +423,12 @@ export function KanbanBoard({ userRole, username, rollNumber }: KanbanBoardProps
                 )}
               </div>
               <p className="text-[10px] text-muted-foreground font-medium uppercase tracking-widest">
-                {isAdmin && isBoardOwner ? "Global Oversight View" : "Personal Contributor Workspace"}
+                {isBoardOwner ? "Global Oversight View" : "Personal Contributor Workspace"}
               </p>
             </div>
           </div>
           <div className="flex items-center gap-3">
-            {isAdmin && isBoardOwner && (
+            {isBoardOwner && (
               <Popover>
                 <PopoverTrigger asChild>
                   <Button variant="outline" className="border-accent text-accent hover:bg-accent hover:text-accent-foreground transition-all shadow-sm">
@@ -501,7 +508,7 @@ export function KanbanBoard({ userRole, username, rollNumber }: KanbanBoardProps
             />
           </div>
 
-          {isAdmin && isBoardOwner && (
+          {isBoardOwner && (
             <div className="w-[240px]">
               <Select value={assigneeFilter} onValueChange={setAssigneeFilter}>
                 <SelectTrigger className="h-10 bg-white shadow-sm border-muted">
@@ -513,7 +520,7 @@ export function KanbanBoard({ userRole, username, rollNumber }: KanbanBoardProps
                 <SelectContent>
                   <SelectItem value="all">All Members</SelectItem>
                   {workspaceMembers.map(member => (
-                    <SelectItem key={member.id} value={member.name}>
+                    <SelectItem key={member.id} value={member.name} className="group">
                       <div className="flex items-center justify-between w-full gap-4">
                         <span className="truncate">{member.name}</span>
                         {member.role === 'admin' && (
@@ -593,7 +600,7 @@ export function KanbanBoard({ userRole, username, rollNumber }: KanbanBoardProps
         userRollNumber={rollNumber}
         columnOptions={columns}
         memberOptions={memberNames}
-        isAdmin={isAdmin && isBoardOwner}
+        isAdmin={isBoardOwner}
       />
     </div>
   )

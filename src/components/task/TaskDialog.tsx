@@ -1,4 +1,3 @@
-
 "use client"
 
 import * as React from "react"
@@ -124,9 +123,22 @@ export function TaskDialog({
 
   const generateRollId = () => {
     const baseId = userRollNumber || "225001";
-    // Count existing tasks for this user to create a sequential ID: RollNumber-01, RollNumber-02...
-    const userTasksCount = tasks.filter(t => t.id.startsWith(baseId)).length;
-    const nextNum = userTasksCount + 1;
+    // Filter tasks that belong to this user (based on the baseId prefix)
+    const userTasks = tasks.filter(t => t.id.startsWith(baseId));
+    
+    // Find the highest suffix number used so far
+    let maxNum = 0;
+    userTasks.forEach(t => {
+      const parts = t.id.split('-');
+      if (parts.length > 1) {
+        const num = parseInt(parts[1], 10);
+        if (!isNaN(num) && num > maxNum) {
+          maxNum = num;
+        }
+      }
+    });
+
+    const nextNum = maxNum + 1;
     return `${baseId}-${nextNum.toString().padStart(2, '0')}`;
   }
 
@@ -257,7 +269,7 @@ export function TaskDialog({
                       </Select>
                       {!isAdmin && (
                         <p className="text-[10px] text-muted-foreground italic px-1">
-                          Students can see the workspace team but cannot reassign tasks.
+                          Only administrators can reassign tasks.
                         </p>
                       )}
                       <FormMessage />
