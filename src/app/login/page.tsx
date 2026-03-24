@@ -53,7 +53,7 @@ export default function LoginPage() {
             return
           }
 
-          // Check if they were invited
+          // Check if they were already invited (member of a board)
           const q = query(collection(db, "boards"), where("memberIds", "array-contains", user.uid))
           const memberSnap = await getDocs(q)
           
@@ -69,6 +69,7 @@ export default function LoginPage() {
             })
             router.push("/")
           } else {
+            // Need onboarding
             setTempGoogleUser(user)
             setOnboardingData(prev => ({ ...prev, username: user.displayName || "" }))
             setShowRoleSelection(true)
@@ -89,14 +90,19 @@ export default function LoginPage() {
     checkRedirect()
   }, [auth, db, router, toast])
 
-  // If already signed in and has a profile, go home.
+  // If already signed in (not via redirect result, but normal session)
   React.useEffect(() => {
-    if (currentUser && !showRoleSelection && !isUserLoading) {
+    if (currentUser && !showRoleSelection && !isUserLoading && !tempGoogleUser) {
       const checkProfile = async () => {
         try {
           const docSnap = await getDoc(doc(db, "users", currentUser.uid))
           if (docSnap.exists()) {
             router.push("/")
+          } else {
+            // Logged in but no profile - show selection
+            setTempGoogleUser(currentUser)
+            setOnboardingData(prev => ({ ...prev, username: currentUser.displayName || "" }))
+            setShowRoleSelection(true)
           }
         } catch (err) {
           // Stay on page
@@ -104,7 +110,7 @@ export default function LoginPage() {
       }
       checkProfile()
     }
-  }, [currentUser, showRoleSelection, router, db, isUserLoading])
+  }, [currentUser, showRoleSelection, router, db, isUserLoading, tempGoogleUser])
 
   const handleEmailLogin = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -130,7 +136,7 @@ export default function LoginPage() {
     try {
       const provider = new GoogleAuthProvider()
       provider.setCustomParameters({ prompt: 'select_account' })
-      // Use Redirect instead of Popup for better compatibility in workstation environments
+      // Use Redirect for maximum reliability in Studio environment
       await signInWithRedirect(auth, provider)
     } catch (error: any) {
       setIsLoading(false)

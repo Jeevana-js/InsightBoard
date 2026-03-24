@@ -23,11 +23,11 @@ export default function Home() {
 
   React.useEffect(() => {
     // Only redirect if we are certain the user is not logged in.
-    // Small delay helps avoid bounce-back during auth settlement (especially after redirect login).
+    // Increase delay to 1.5s to handle redirect-login settlement more reliably.
     if (!isUserLoading && !user) {
       const timeout = setTimeout(() => {
         router.push("/login")
-      }, 500)
+      }, 1500)
       return () => clearTimeout(timeout)
     }
   }, [user, isUserLoading, router])
