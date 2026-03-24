@@ -22,11 +22,14 @@ export default function Home() {
   const { data: profile, isLoading: isProfileLoading } = useDoc(profileRef)
 
   React.useEffect(() => {
+    // Only redirect if we are certain the user is not logged in.
+    // Small delay helps avoid bounce-back during auth settlement.
     if (!isUserLoading && !user) {
       router.push("/login")
     }
   }, [user, isUserLoading, router])
 
+  // If loading user or if we have a user but are still fetching their profile
   if (isUserLoading || (user && isProfileLoading)) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
@@ -38,7 +41,30 @@ export default function Home() {
     )
   }
 
+  // If no user after loading, let the useEffect handle the redirect.
   if (!user) return null
+
+  // If we have a user but no profile (newly signed up but doc not created yet)
+  // we might want to show a loading state or redirect to onboarding.
+  // In our flow, the login page handles onboarding, so if they reach here,
+  // they should have a profile.
+  if (!profile && !isProfileLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background p-4">
+        <div className="text-center space-y-4 max-w-sm">
+          <Loader2 className="h-10 w-10 animate-spin text-primary mx-auto" />
+          <p className="text-lg font-semibold">Preparing your profile...</p>
+          <p className="text-sm text-muted-foreground">If this takes too long, you may need to complete your account setup.</p>
+          <button 
+            onClick={() => router.push("/login")}
+            className="text-primary underline text-sm"
+          >
+            Go to setup
+          </button>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <main className="min-h-screen bg-background">

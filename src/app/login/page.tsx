@@ -1,3 +1,4 @@
+
 "use client"
 
 import * as React from "react"
@@ -35,6 +36,7 @@ export default function LoginPage() {
   const router = useRouter()
   const { toast } = useToast()
 
+  // If already signed in and has a profile, go home.
   React.useEffect(() => {
     if (currentUser && !showRoleSelection && !isUserLoading) {
       const checkProfile = async () => {
@@ -44,7 +46,7 @@ export default function LoginPage() {
             router.push("/")
           }
         } catch (err) {
-          // Profile might not exist yet, onboarding will handle it
+          // If profile check fails, stay on login/onboarding
         }
       }
       checkProfile()
@@ -69,10 +71,11 @@ export default function LoginPage() {
   }
 
   const handleGoogleLogin = async () => {
+    if (isLoading) return
     setIsLoading(true)
+    
     try {
       const provider = new GoogleAuthProvider()
-      // Force account selection to refresh stale tokens and ensure a clean session
       provider.setCustomParameters({ prompt: 'select_account' })
       
       const result = await signInWithPopup(auth, provider)
@@ -82,42 +85,40 @@ export default function LoginPage() {
         throw new Error("Could not retrieve user information from Google.")
       }
 
-      // Small delay to ensure the auth token is synchronized with Firestore permissions
-      await new Promise(resolve => setTimeout(resolve, 500))
-
+      // Check if user exists in Firestore
       const userDoc = await getDoc(doc(db, "users", user.uid))
       
       if (userDoc.exists()) {
         router.push("/")
+        return
+      }
+
+      // If no profile, check if they were invited (exist in any board memberIds)
+      const q = query(collection(db, "boards"), where("memberIds", "array-contains", user.uid))
+      const memberSnap = await getDocs(q)
+      
+      if (!memberSnap.empty) {
+        // Auto-create minimal profile for invited users
+        await setDoc(doc(db, "users", user.uid), {
+          id: user.uid,
+          username: user.displayName || "User",
+          email: user.email,
+          rollNumber: "PENDING",
+          role: 'member',
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString()
+        })
+        router.push("/")
       } else {
-        // If profile doesn't exist, check if they are already members of any board (invited)
-        const q = query(collection(db, "boards"), where("memberIds", "array-contains", user.uid))
-        const memberSnap = await getDocs(q)
-        
-        if (!memberSnap.empty) {
-          // Automatically create a minimal profile if they were already invited to a board
-          await setDoc(doc(db, "users", user.uid), {
-            id: user.uid,
-            username: user.displayName || "User",
-            email: user.email,
-            rollNumber: "PENDING",
-            role: 'member',
-            createdAt: new Date().toISOString(),
-            updatedAt: new Date().toISOString()
-          })
-          router.push("/")
-        } else {
-          // Otherwise, proceed to onboarding to select role/details
-          setTempGoogleUser(user)
-          setOnboardingData(prev => ({
-            ...prev,
-            username: user.displayName || ""
-          }))
-          setShowRoleSelection(true)
-        }
+        // New user needs onboarding
+        setTempGoogleUser(user)
+        setOnboardingData(prev => ({
+          ...prev,
+          username: user.displayName || ""
+        }))
+        setShowRoleSelection(true)
       }
     } catch (error: any) {
-      // Gracefully handle manual popup closure
       if (error.code === 'auth/popup-closed-by-user') {
         setIsLoading(false)
         return
@@ -372,9 +373,13 @@ export default function LoginPage() {
           </div>
           
           <Button variant="outline" className="w-full" onClick={handleGoogleLogin} disabled={isLoading}>
-            <svg className="mr-2 h-4 w-4" aria-hidden="true" focusable="false" data-prefix="fab" data-icon="google" role="img" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 488 512">
-              <path fill="currentColor" d="M488 261.8C488 403.3 391.1 504 248 504 110.8 504 0 393.2 0 256S110.8 8 248 8c66.8 0 123 24.5 166.3 64.9l-67.5 64.9C258.5 52.6 94.3 116.6 94.3 256c0 86.5 69.1 156.6 153.7 156.6 98.2 0 135-70.4 140.8-106.9H248v-85.3h236.1c2.3 12.7 3.9 24.9 3.9 41.4z"></path>
-            </svg>
+            {isLoading ? (
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+            ) : (
+              <svg className="mr-2 h-4 w-4" aria-hidden="true" focusable="false" data-prefix="fab" data-icon="google" role="img" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 488 512">
+                <path fill="currentColor" d="M488 261.8C488 403.3 391.1 504 248 504 110.8 504 0 393.2 0 256S110.8 8 248 8c66.8 0 123 24.5 166.3 64.9l-67.5 64.9C258.5 52.6 94.3 116.6 94.3 256c0 86.5 69.1 156.6 153.7 156.6 98.2 0 135-70.4 140.8-106.9H248v-85.3h236.1c2.3 12.7 3.9 24.9 3.9 41.4z"></path>
+              </svg>
+            )}
             Google
           </Button>
         </CardContent>
