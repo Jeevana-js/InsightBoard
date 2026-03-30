@@ -155,7 +155,7 @@ function SettingsContent() {
     setHasCopied(true)
     toast({
       title: "Code Copied",
-      description: "Room code ready to share with students.",
+      description: "Room code ready to share with members.",
     })
     setTimeout(() => setHasCopied(false), 2000)
   }
@@ -177,7 +177,7 @@ function SettingsContent() {
         toast({
           variant: "destructive",
           title: "Not Found",
-          description: "Could not find a workspace with that code. Please check with your teacher.",
+          description: "Could not find a workspace with that code. Please check with your admin.",
         })
         setIsJoining(false)
         return
@@ -192,7 +192,7 @@ function SettingsContent() {
       }).then(() => {
         toast({
           title: "Workspace Joined",
-          description: "You have successfully joined the teacher's board.",
+          description: "You have successfully joined the admin's board.",
         })
         setJoinCode("")
         // Store and navigate to the joined board
@@ -258,7 +258,7 @@ function SettingsContent() {
         setMembers(members.map(m => m.id === memberId ? { ...m, rating } : m))
         toast({
           title: "Rating Updated",
-          description: `Student rating updated to ${rating} stars.`,
+          description: `Member rating updated to ${rating} stars.`,
         })
       })
       .catch(async (error: any) => {
@@ -381,7 +381,7 @@ function SettingsContent() {
     toast({
       variant: "destructive",
       title: "Access Revoked",
-      description: "You are no longer a member of this room. Please contact your teacher.",
+      description: "You are no longer a member of this room. Please contact your admin.",
     })
     signOut(auth).then(() => {
       router.push("/login")
@@ -472,7 +472,7 @@ function SettingsContent() {
                     </div>
                     {profile?.role === 'member' && (
                       <div className="space-y-2">
-                        <Label>Teacher's Rating</Label>
+                        <Label>Admin's Rating</Label>
                         <div className="flex items-center h-8">
                           <StarRating value={profile?.rating || 0} readOnly />
                         </div>
@@ -531,7 +531,7 @@ function SettingsContent() {
                       Room Invitation Code
                     </CardTitle>
                     <CardDescription>
-                      Share this unique code with students. They will use it during signup to join as Members.
+                      Share this unique code with members. They will use it during signup to join as Members.
                     </CardDescription>
                   </CardHeader>
                   <CardContent className="space-y-4 pb-6">
@@ -547,7 +547,7 @@ function SettingsContent() {
                     </div>
                     <div className="rounded-lg bg-card/50 p-3 border border-accent/10">
                       <p className="text-[11px] text-accent font-medium leading-relaxed">
-                        <strong>Teacher Security:</strong> Users signing up with this code are restricted to the <strong>Student Member</strong> role.
+                        <strong>Admin Security:</strong> Users signing up with this code are restricted to the <strong>Member</strong> role.
                       </p>
                     </div>
                   </CardContent>
@@ -561,7 +561,7 @@ function SettingsContent() {
                       Join a Workspace
                     </CardTitle>
                     <CardDescription>
-                      Enter a room invitation code provided by your teacher to join their board.
+                      Enter a room invitation code provided by your admin to join their board.
                     </CardDescription>
                   </CardHeader>
                   <CardContent className="space-y-4 pb-6">

@@ -92,7 +92,7 @@ export function RoomDashboard({ userRole, username, onSelectBoard }: RoomDashboa
     const unsubscribes: (() => void)[] = []
 
     if (isAdmin) {
-      // Teachers: listen to boards they own
+      // Admins: listen to boards they own
       const q = query(collection(db, "boards"), where("ownerId", "==", user.uid))
       const unsub = onSnapshot(q, (snap) => {
         const owned = snap.docs.map((d) => ({ ...d.data(), id: d.id } as Board))
@@ -101,7 +101,7 @@ export function RoomDashboard({ userRole, username, onSelectBoard }: RoomDashboa
       })
       unsubscribes.push(unsub)
     } else {
-      // Students: listen to boards they're a member of
+      // Members: listen to boards they're a member of
       const q = query(collection(db, "boards"), where("memberIds", "array-contains", user.uid))
       const unsub = onSnapshot(q, (snap) => {
         const joined = snap.docs.map((d) => ({ ...d.data(), id: d.id } as Board))
@@ -171,7 +171,7 @@ export function RoomDashboard({ userRole, username, onSelectBoard }: RoomDashboa
         toast({
           variant: "destructive",
           title: "Room Not Found",
-          description: "No room matches that invite code. Check with your teacher.",
+          description: "No room matches that invite code. Check with your admin.",
         })
         setIsJoining(false)
         return
@@ -189,7 +189,7 @@ export function RoomDashboard({ userRole, username, onSelectBoard }: RoomDashboa
       }
 
       if (boardData.ownerId === user.uid) {
-        toast({ title: "You Own This Room", description: "You are the teacher of this room." })
+        toast({ title: "You Own This Room", description: "You are the admin of this room." })
         setJoinCode("")
         setIsJoining(false)
         onSelectBoard(boardDoc.id)
@@ -315,7 +315,7 @@ export function RoomDashboard({ userRole, username, onSelectBoard }: RoomDashboa
             <div>
               <h1 className="text-xl font-bold text-primary tracking-tight">InsightBoard</h1>
               <p className="text-[10px] text-muted-foreground font-medium uppercase tracking-widest">
-                {isAdmin ? "Teacher Dashboard" : "Student Dashboard"}
+                {isAdmin ? "Admin Dashboard" : "Member Dashboard"}
               </p>
             </div>
           </div>
@@ -399,7 +399,7 @@ export function RoomDashboard({ userRole, username, onSelectBoard }: RoomDashboa
 
       {/* Main Content */}
       <main className="max-w-6xl mx-auto p-6 md:p-8 space-y-8">
-        {/* Join Room (Students only) */}
+        {/* Join Room (Members only) */}
         {!isAdmin && (
           <Card className="border-none bg-primary/5 overflow-hidden shadow-sm ring-1 ring-primary/20">
             <div className="h-1 bg-primary w-full" />
@@ -409,7 +409,7 @@ export function RoomDashboard({ userRole, username, onSelectBoard }: RoomDashboa
                 Join a Room
               </CardTitle>
               <CardDescription>
-                Enter the invite code your teacher shared with you.
+                Enter the invite code your admin shared with you.
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -459,7 +459,7 @@ export function RoomDashboard({ userRole, username, onSelectBoard }: RoomDashboa
                 <p className="text-sm text-muted-foreground max-w-sm">
                   {isAdmin
                     ? 'Click "Create Room" to set up your first classroom.'
-                    : "Enter an invite code from your teacher to join a room."}
+                    : "Enter an invite code from your admin to join a room."}
                 </p>
               </CardContent>
             </Card>
@@ -488,7 +488,7 @@ export function RoomDashboard({ userRole, username, onSelectBoard }: RoomDashboa
                   <CardContent className="pt-0 space-y-3">
                     <div className="flex items-center gap-2 text-xs text-muted-foreground">
                       <Users className="h-3.5 w-3.5" />
-                      <span>{(board.memberIds?.length || 0)} student{(board.memberIds?.length || 0) !== 1 ? "s" : ""}</span>
+                      <span>{(board.memberIds?.length || 0)} member{(board.memberIds?.length || 0) !== 1 ? "s" : ""}</span>
                     </div>
 
                     {isAdmin && (

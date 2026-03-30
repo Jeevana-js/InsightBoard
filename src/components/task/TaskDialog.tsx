@@ -43,8 +43,8 @@ const taskSchema = z.object({
   status: z.string().min(1, "Status is required"),
   assignee: z.string().min(1, "Assignee is required"),
   dueDate: z.string().min(1, "Due Date is required"),
-  teacherComment: z.string().optional(),
-  studentComment: z.string().optional(),
+  adminComment: z.string().optional(),
+  memberComment: z.string().optional(),
 })
 
 interface MemberOption {
@@ -92,8 +92,8 @@ export function TaskDialog({
       status: task?.status || defaultStatus || columnOptions[0] || 'New',
       assignee: task?.assignee || currentUsername || "",
       dueDate: task?.dueDate ? format(new Date(task.dueDate), "yyyy-MM-dd") : "",
-      teacherComment: task?.teacherComment || "",
-      studentComment: task?.studentComment || "",
+      adminComment: task?.adminComment || "",
+      memberComment: task?.memberComment || "",
     },
   })
 
@@ -105,8 +105,8 @@ export function TaskDialog({
         status: task?.status || defaultStatus || columnOptions[0] || 'New',
         assignee: task?.assignee || currentUsername || "",
         dueDate: task?.dueDate ? format(new Date(task.dueDate), "yyyy-MM-dd") : "",
-        teacherComment: task?.teacherComment || "",
-        studentComment: task?.studentComment || "",
+        adminComment: task?.adminComment || "",
+        memberComment: task?.memberComment || "",
       })
     }
   }, [open, task, defaultStatus, form, currentUsername, columnOptions])
@@ -164,8 +164,8 @@ export function TaskDialog({
       assigneeId: resolvedAssigneeId,
       dueDate: values.dueDate ? new Date(values.dueDate).toISOString() : undefined,
       createdAt: task?.createdAt || new Date().toISOString(),
-      teacherComment: values.teacherComment || "",
-      studentComment: values.studentComment || "",
+      adminComment: values.adminComment || "",
+      memberComment: values.memberComment || "",
       creatorId: task?.creatorId || user.uid,
     }
     onSave(newTask)
@@ -310,7 +310,7 @@ export function TaskDialog({
 
               <FormField
                 control={form.control}
-                name="teacherComment"
+                name="adminComment"
                 render={({ field }) => (
                   <FormItem className="bg-amber-50/50 dark:bg-amber-950/20 p-4 rounded-xl border border-amber-100 dark:border-amber-900/50 space-y-3">
                     <FormLabel className="text-amber-900 dark:text-amber-400 flex items-center gap-2 font-bold">

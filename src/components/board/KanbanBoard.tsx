@@ -131,7 +131,7 @@ export function KanbanBoard({ boardId, userRole, username, rollNumber, onBack }:
       const baseCol = collection(db, "boards", activeBoardId, "columns", colId, "tasks")
       
       if (boardData.ownerId === user.uid) {
-        // Teacher sees all tasks on their board
+        // Admin sees all tasks on their board
         const q = query(baseCol, where("ownerId", "==", user.uid))
         const unsub = onSnapshot(q, 
           (snap) => {
@@ -153,7 +153,7 @@ export function KanbanBoard({ boardId, userRole, username, rollNumber, onBack }:
         )
         unsubscribes.push(unsub)
       } else {
-        // Student: query tasks they created
+        // Member: query tasks they created
         const qCreated = query(baseCol, where("creatorId", "==", user.uid))
         const unsub1 = onSnapshot(qCreated, 
           (snap) => {
@@ -174,7 +174,7 @@ export function KanbanBoard({ boardId, userRole, username, rollNumber, onBack }:
         )
         unsubscribes.push(unsub1)
 
-        // Student: query tasks assigned to them
+        // Member: query tasks assigned to them
         const qAssigned = query(baseCol, where("assigneeId", "==", user.uid))
         const unsub2 = onSnapshot(qAssigned, 
           (snap) => {
@@ -201,7 +201,7 @@ export function KanbanBoard({ boardId, userRole, username, rollNumber, onBack }:
     return () => unsubscribes.forEach(unsub => unsub())
   }, [activeBoardId, columns, db, user, isAccessRevoked, boardData, rebuildTasksFromMap])
 
-  // Backfill assigneeId for older tasks that only have assignee name (teacher only)
+  // Backfill assigneeId for older tasks that only have assignee name (admin only)
   React.useEffect(() => {
     if (!activeBoardId || !boardData || !user || boardData.ownerId !== user.uid) return
     if (workspaceMembers.length === 0 || tasks.length === 0) return
@@ -254,7 +254,7 @@ export function KanbanBoard({ boardId, userRole, username, rollNumber, onBack }:
     setHasCopied(true)
     toast({
       title: "Invite Code Copied",
-      description: "Students can now use this code to join your room during signup.",
+      description: "Members can now use this code to join your room during signup.",
     })
     setTimeout(() => setHasCopied(false), 2000)
   }
@@ -442,11 +442,11 @@ export function KanbanBoard({ boardId, userRole, username, rollNumber, onBack }:
                 {isAdmin && isBoardOwner ? (
                   <Badge className="bg-emerald-500/10 text-emerald-600 border-emerald-500/20 hover:bg-emerald-500/20 gap-1">
                     <ShieldCheck className="h-3 w-3" />
-                    Teacher Admin
+                    Admin
                   </Badge>
                 ) : (
                   <Badge variant="secondary" className="text-[10px] h-4">
-                    Student Member
+                    Member
                   </Badge>
                 )}
               </div>
@@ -461,7 +461,7 @@ export function KanbanBoard({ boardId, userRole, username, rollNumber, onBack }:
                 <PopoverTrigger asChild>
                   <Button variant="outline" className="border-accent text-accent hover:bg-accent hover:text-accent-foreground transition-all shadow-sm">
                     <Share2 className="h-4 w-4 mr-2" />
-                    Invite Students
+                    Invite Members
                   </Button>
                 </PopoverTrigger>
                 <PopoverContent className="w-80 p-5 shadow-2xl border-accent/20 bg-popover backdrop-blur-sm">
@@ -472,7 +472,7 @@ export function KanbanBoard({ boardId, userRole, username, rollNumber, onBack }:
                         Room Invite Code
                       </h4>
                       <p className="text-[11px] text-muted-foreground leading-relaxed">
-                        Students using this code join as <strong>Members</strong>.
+                        Members using this code join as <strong>Members</strong>.
                       </p>
                     </div>
                     <div className="flex gap-2">

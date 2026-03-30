@@ -22,7 +22,7 @@ export default function SignupPage() {
     password: "",
     confirmPassword: "",
     rollNumber: "",
-    role: "student" as "teacher" | "student",
+    role: "member" as "admin" | "member",
     inviteCode: ""
   })
   const [isLoading, setIsLoading] = React.useState(false)
@@ -70,7 +70,7 @@ export default function SignupPage() {
       
       await updateProfile(user, { displayName: formData.username })
 
-      const appRole = (isInviteActive || formData.role === 'student') ? 'member' : 'admin'
+      const appRole = (isInviteActive || formData.role === 'member') ? 'member' : 'admin'
       
       await setDoc(doc(db, "users", user.uid), {
         id: user.uid,
@@ -82,7 +82,7 @@ export default function SignupPage() {
         updatedAt: new Date().toISOString()
       })
 
-      // Teachers create rooms from the dashboard, no auto-board creation
+      // Admins create rooms from the dashboard, no auto-board creation
 
       if (isInviteActive) {
         const targetCode = formData.inviteCode.trim().toLowerCase()
@@ -137,7 +137,7 @@ export default function SignupPage() {
               <Hash className="h-4 w-4 text-accent" />
               <AlertTitle className="text-xs font-bold uppercase tracking-wider text-accent">Room Code Active</AlertTitle>
               <AlertDescription className="text-xs">
-                You are joining a Teacher's workspace. Your role is restricted to <strong>Student Member</strong>.
+                You are joining an Admin's workspace. Your role is restricted to <strong>Member</strong>.
               </AlertDescription>
             </Alert>
           )}
@@ -203,37 +203,37 @@ export default function SignupPage() {
                     <SelectValue placeholder="Select your role" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="student">
+                    <SelectItem value="member">
                       <div className="flex items-center">
                         <GraduationCap className="h-4 w-4 mr-2 text-primary" />
-                        Student (Assigns as Member)
+                        Member
                       </div>
                     </SelectItem>
-                    <SelectItem value="teacher">
+                    <SelectItem value="admin">
                       <div className="flex items-center">
                         <Briefcase className="h-4 w-4 mr-2 text-primary" />
-                        Teacher (Assigns as Admin)
+                        Admin
                       </div>
                     </SelectItem>
                   </SelectContent>
                 </Select>
                 <p className="text-[10px] text-muted-foreground italic px-1">
-                  Teachers receive administrative control over their workspace.
+                  Admins receive administrative control over their workspace.
                 </p>
               </div>
             )}
 
-            {formData.role === 'teacher' && !isInviteActive && (
+            {formData.role === 'admin' && !isInviteActive && (
               <Alert className="border-primary/20 bg-primary/5">
                 <Hash className="h-4 w-4 text-primary" />
                 <AlertTitle className="text-xs font-bold uppercase tracking-wider text-primary">Invitation Code</AlertTitle>
                 <AlertDescription className="text-xs">
-                  Your unique invitation code will be generated once your account is created. Share it with students to join your workspace.
+                  Your unique invitation code will be generated once your account is created. Share it with members to join your workspace.
                 </AlertDescription>
               </Alert>
             )}
 
-            {formData.role === 'student' && !isInviteActive && (
+            {formData.role === 'member' && !isInviteActive && (
               <div className="space-y-2">
                 <Label htmlFor="inviteCode">Invitation Code (Optional)</Label>
                 <div className="relative">
@@ -247,7 +247,7 @@ export default function SignupPage() {
                   />
                 </div>
                 <p className="text-[10px] text-muted-foreground italic px-1">
-                  Entering a code will automatically join you to that Teacher's workspace as a Member.
+                  Entering a code will automatically join you to that Admin's workspace as a Member.
                 </p>
               </div>
             )}

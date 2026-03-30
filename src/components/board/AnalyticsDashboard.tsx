@@ -60,14 +60,14 @@ const COLORS = [
 const STATUS_COLORS: Record<string, string> = {
   New: "#6366f1",
   "In Development": "#f59e0b",
-  "Ready for Review": "#3b82f6",
+  "Testing": "#3b82f6",
   Resolved: "#22c55e",
   Closed: "#6b7280",
 }
 
 export function AnalyticsDashboard({ tasks, members }: AnalyticsDashboardProps) {
-  // Filter out admin from student list
-  const students = members.filter((m) => m.role !== "admin")
+  // Filter out admin from member list
+  const nonAdminMembers = members.filter((m) => m.role !== "admin")
 
   // --- Summary Stats ---
   const totalTasks = tasks.length
@@ -92,20 +92,20 @@ export function AnalyticsDashboard({ tasks, members }: AnalyticsDashboardProps) 
     value: { label: "Tasks" },
   }
 
-  // --- Student Performance Data ---
-  const studentPerformance = students.map((student) => {
-    const studentTasks = tasks.filter(
-      (t) => t.assigneeId === student.id || t.assignee === student.name || t.creatorId === student.id
+  // --- Member Performance Data ---
+  const memberPerformance = nonAdminMembers.map((member) => {
+    const memberTasks = tasks.filter(
+      (t) => t.assigneeId === member.id || t.assignee === member.name || t.creatorId === member.id
     )
-    const completed = studentTasks.filter(
+    const completed = memberTasks.filter(
       (t) => t.status === "Resolved" || t.status === "Closed"
     ).length
-    const total = studentTasks.length
-    const inProgress = studentTasks.filter((t) => t.status === "In Development").length
-    const newTasks = studentTasks.filter((t) => t.status === "New").length
+    const total = memberTasks.length
+    const inProgress = memberTasks.filter((t) => t.status === "In Development").length
+    const newTasks = memberTasks.filter((t) => t.status === "New").length
 
     // Calculate average days from creation to now for completed tasks
-    const completedTaskDurations = studentTasks
+    const completedTaskDurations = memberTasks
       .filter((t) => t.status === "Resolved" || t.status === "Closed")
       .map((t) => {
         const created = new Date(t.createdAt).getTime()
@@ -119,8 +119,8 @@ export function AnalyticsDashboard({ tasks, members }: AnalyticsDashboardProps) 
         : 0
 
     return {
-      name: student.name,
-      id: student.id,
+      name: member.name,
+      id: member.id,
       total,
       completed,
       inProgress,
@@ -131,11 +131,11 @@ export function AnalyticsDashboard({ tasks, members }: AnalyticsDashboardProps) 
   })
 
   // Sort by activity (total tasks)
-  const sortedByActivity = [...studentPerformance].sort((a, b) => b.total - a.total)
+  const sortedByActivity = [...memberPerformance].sort((a, b) => b.total - a.total)
   const mostActive = sortedByActivity[0]
   const leastActive = sortedByActivity[sortedByActivity.length - 1]
 
-  // --- Bar Chart: Student Task Breakdown ---
+  // --- Bar Chart: Member Task Breakdown ---
   const barChartConfig: ChartConfig = {
     completed: { label: "Completed", color: "#22c55e" },
     inProgress: { label: "In Progress", color: "#f59e0b" },
@@ -143,7 +143,7 @@ export function AnalyticsDashboard({ tasks, members }: AnalyticsDashboardProps) 
   }
 
   // --- Completion Rate Chart ---
-  const completionData = studentPerformance
+  const completionData = memberPerformance
     .filter((s) => s.total > 0)
     .sort((a, b) => b.completionRate - a.completionRate)
 
@@ -203,8 +203,8 @@ export function AnalyticsDashboard({ tasks, members }: AnalyticsDashboardProps) 
           <CardContent className="pt-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-muted-foreground">Students</p>
-                <p className="text-3xl font-bold">{students.length}</p>
+                <p className="text-sm text-muted-foreground">Members</p>
+                <p className="text-3xl font-bold">{nonAdminMembers.length}</p>
               </div>
               <div className="h-12 w-12 bg-blue-500/10 rounded-full flex items-center justify-center">
                 <Users className="h-6 w-6 text-blue-600" />
@@ -264,17 +264,17 @@ export function AnalyticsDashboard({ tasks, members }: AnalyticsDashboardProps) 
           </CardContent>
         </Card>
 
-        {/* Student Task Breakdown Bar Chart */}
+        {/* Member Task Breakdown Bar Chart */}
         <Card>
           <CardHeader>
-            <CardTitle className="text-base">Student Task Breakdown</CardTitle>
-            <CardDescription>Tasks per student by status</CardDescription>
+            <CardTitle className="text-base">Member Task Breakdown</CardTitle>
+            <CardDescription>Tasks per member by status</CardDescription>
           </CardHeader>
           <CardContent>
-            {studentPerformance.length > 0 && studentPerformance.some((s) => s.total > 0) ? (
+            {memberPerformance.length > 0 && memberPerformance.some((s) => s.total > 0) ? (
               <ChartContainer config={barChartConfig} className="h-[280px] w-full">
                 <BarChart
-                  data={studentPerformance}
+                  data={memberPerformance}
                   layout="vertical"
                   margin={{ left: 10, right: 10 }}
                 >
@@ -294,20 +294,20 @@ export function AnalyticsDashboard({ tasks, members }: AnalyticsDashboardProps) 
               </ChartContainer>
             ) : (
               <div className="h-[280px] flex items-center justify-center text-muted-foreground text-sm">
-                No student data yet
+                No member data yet
               </div>
             )}
           </CardContent>
         </Card>
       </div>
 
-      {/* Completion Rate + Active Students */}
+      {/* Completion Rate + Active Members */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Completion Rate per Student */}
+        {/* Completion Rate per Member */}
         <Card className="lg:col-span-2">
           <CardHeader>
             <CardTitle className="text-base">Task Completion Rate</CardTitle>
-            <CardDescription>Percentage of completed tasks per student</CardDescription>
+            <CardDescription>Percentage of completed tasks per member</CardDescription>
           </CardHeader>
           <CardContent>
             {completionData.length > 0 ? (
@@ -350,7 +350,7 @@ export function AnalyticsDashboard({ tasks, members }: AnalyticsDashboardProps) 
         <Card>
           <CardHeader>
             <CardTitle className="text-base">Activity Highlights</CardTitle>
-            <CardDescription>Most and least active students</CardDescription>
+            <CardDescription>Most and least active members</CardDescription>
           </CardHeader>
           <CardContent className="space-y-6">
             {mostActive && mostActive.total > 0 ? (
@@ -411,18 +411,18 @@ export function AnalyticsDashboard({ tasks, members }: AnalyticsDashboardProps) 
         </Card>
       </div>
 
-      {/* Student Detail Table */}
+      {/* Member Detail Table */}
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">Student Performance Details</CardTitle>
-          <CardDescription>Detailed breakdown per student with avg. time to complete</CardDescription>
+          <CardTitle className="text-base">Member Performance Details</CardTitle>
+          <CardDescription>Detailed breakdown per member with avg. time to complete</CardDescription>
         </CardHeader>
         <CardContent>
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b text-muted-foreground">
-                  <th className="text-left py-3 px-2 font-medium">Student</th>
+                  <th className="text-left py-3 px-2 font-medium">Member</th>
                   <th className="text-center py-3 px-2 font-medium">Total</th>
                   <th className="text-center py-3 px-2 font-medium">Completed</th>
                   <th className="text-center py-3 px-2 font-medium">In Progress</th>
@@ -432,38 +432,38 @@ export function AnalyticsDashboard({ tasks, members }: AnalyticsDashboardProps) 
                 </tr>
               </thead>
               <tbody>
-                {sortedByActivity.map((student) => (
-                  <tr key={student.id} className="border-b last:border-0 hover:bg-muted/50 transition-colors">
-                    <td className="py-3 px-2 font-medium">{student.name}</td>
-                    <td className="text-center py-3 px-2">{student.total}</td>
+                {sortedByActivity.map((member) => (
+                  <tr key={member.id} className="border-b last:border-0 hover:bg-muted/50 transition-colors">
+                    <td className="py-3 px-2 font-medium">{member.name}</td>
+                    <td className="text-center py-3 px-2">{member.total}</td>
                     <td className="text-center py-3 px-2">
-                      <span className="text-green-600 font-medium">{student.completed}</span>
+                      <span className="text-green-600 font-medium">{member.completed}</span>
                     </td>
                     <td className="text-center py-3 px-2">
-                      <span className="text-amber-600 font-medium">{student.inProgress}</span>
+                      <span className="text-amber-600 font-medium">{member.inProgress}</span>
                     </td>
                     <td className="text-center py-3 px-2">
-                      <span className="text-indigo-600 font-medium">{student.newTasks}</span>
+                      <span className="text-indigo-600 font-medium">{member.newTasks}</span>
                     </td>
                     <td className="text-center py-3 px-2">
                       <div className="flex items-center justify-center gap-2">
                         <Progress
-                          value={student.completionRate}
+                          value={member.completionRate}
                           className={cn(
                             "h-2 w-16",
-                            student.completionRate >= 75
+                            member.completionRate >= 75
                               ? "[&>div]:bg-green-500"
-                              : student.completionRate >= 50
+                              : member.completionRate >= 50
                               ? "[&>div]:bg-amber-500"
                               : "[&>div]:bg-red-500"
                           )}
                         />
-                        <span className="text-xs font-medium w-8">{student.completionRate}%</span>
+                        <span className="text-xs font-medium w-8">{member.completionRate}%</span>
                       </div>
                     </td>
                     <td className="text-center py-3 px-2">
-                      {student.avgDays > 0 ? (
-                        <span className="text-xs">{student.avgDays}d</span>
+                      {member.avgDays > 0 ? (
+                        <span className="text-xs">{member.avgDays}d</span>
                       ) : (
                         <span className="text-xs text-muted-foreground">—</span>
                       )}
@@ -473,7 +473,7 @@ export function AnalyticsDashboard({ tasks, members }: AnalyticsDashboardProps) 
                 {sortedByActivity.length === 0 && (
                   <tr>
                     <td colSpan={7} className="text-center py-8 text-muted-foreground">
-                      No student data available
+                      No member data available
                     </td>
                   </tr>
                 )}

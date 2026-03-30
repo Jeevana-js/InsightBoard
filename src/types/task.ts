@@ -9,8 +9,8 @@ export interface Task {
   assigneeId?: string;
   dueDate?: string;
   createdAt: string;
-  teacherComment?: string;
-  studentComment?: string;
+  adminComment?: string;
+  memberComment?: string;
   creatorId?: string;
 }
 
@@ -44,7 +44,7 @@ export function generateInviteCode(): string {
   return code;
 }
 
-export const INITIAL_COLUMNS: string[] = ['New', 'In Development', 'Ready for Review', 'Resolved', 'Closed'];
+export const INITIAL_COLUMNS: string[] = ['New', 'In Development', 'Testing', 'Resolved', 'Closed'];
 
 export const COLUMNS = INITIAL_COLUMNS; // Legacy support
 

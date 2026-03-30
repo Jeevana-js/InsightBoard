@@ -32,14 +32,14 @@ service cloud.firestore {
     }
 
     /**
-     * Determines if a student can access a specific task.
-     * Students ONLY see tasks they created. Teachers see everything in their own board.
+     * Determines if a member can access a specific task.
+     * Members ONLY see tasks they created. Admins see everything in their own board.
      */
     function canStudentSeeTask(data) {
       return isSignedIn() && (
-        request.auth.uid == data.ownerId || // The board owner (teacher)
-        request.auth.uid == data.creatorId || // The individual student who created it
-        request.auth.uid == data.assigneeId   // The student assigned to this task
+        request.auth.uid == data.ownerId || // The board owner (admin)
+        request.auth.uid == data.creatorId || // The individual member who created it
+        request.auth.uid == data.assigneeId   // The member assigned to this task
       );
     }
 

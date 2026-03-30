@@ -25,7 +25,7 @@ export function TaskCard({ task, onClick, onDragStart }: TaskCardProps) {
         "cursor-grab active:cursor-grabbing hover:shadow-md transition-all duration-200 border-l-4",
         task.status === 'New' && "border-l-blue-400",
         task.status === 'In Development' && "border-l-accent",
-        task.status === 'Ready for Review' && "border-l-amber-400",
+        task.status === 'Testing' && "border-l-amber-400",
         task.status === 'Resolved' && "border-l-emerald-400",
         task.status === 'Closed' && "border-l-gray-300 opacity-75"
       )}
@@ -37,7 +37,7 @@ export function TaskCard({ task, onClick, onDragStart }: TaskCardProps) {
             {task.id}
           </Badge>
           <div className="flex gap-1">
-            {task.teacherComment && (
+            {task.adminComment && (
               <Badge variant="secondary" className="text-[9px] bg-amber-50 text-amber-600 border-amber-200 py-0 flex items-center gap-1">
                 <MessageSquareText className="h-2.5 w-2.5" />
                 Feedback

@@ -27,7 +27,7 @@ export default function LoginPage() {
   const [onboardingData, setOnboardingData] = React.useState({
     username: "",
     rollNumber: "",
-    role: "student" as "teacher" | "student",
+    role: "member" as "admin" | "member",
     inviteCode: ""
   })
 
@@ -191,7 +191,7 @@ export default function LoginPage() {
     try {
       const user = tempGoogleUser
       const isInviteActive = onboardingData.inviteCode.trim().length > 5
-      const appRole = (isInviteActive || onboardingData.role === 'student') ? 'member' : 'admin'
+      const appRole = (isInviteActive || onboardingData.role === 'member') ? 'member' : 'admin'
       
       if (onboardingData.username !== user.displayName) {
         await updateProfile(user, { displayName: onboardingData.username })
@@ -207,7 +207,7 @@ export default function LoginPage() {
         updatedAt: new Date().toISOString()
       })
 
-      // Teachers create rooms from the dashboard, no auto-board creation
+      // Admins create rooms from the dashboard, no auto-board creation
 
       if (isInviteActive) {
         const targetCode = onboardingData.inviteCode.trim().toLowerCase()
@@ -303,33 +303,33 @@ export default function LoginPage() {
                     <SelectValue placeholder="Select your role" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="student">
+                    <SelectItem value="member">
                       <div className="flex items-center">
                         <GraduationCap className="h-4 w-4 mr-2 text-primary" />
-                        Student (Member)
+                        Member
                       </div>
                     </SelectItem>
-                    <SelectItem value="teacher">
+                    <SelectItem value="admin">
                       <div className="flex items-center">
                         <Briefcase className="h-4 w-4 mr-2 text-primary" />
-                        Teacher (Admin)
+                        Admin
                       </div>
                     </SelectItem>
                   </SelectContent>
                 </Select>
               </div>
 
-              {onboardingData.role === 'teacher' && (
+              {onboardingData.role === 'admin' && (
                 <Alert className="border-primary/20 bg-primary/5">
                   <Hash className="h-4 w-4 text-primary" />
-                  <AlertTitle className="text-xs font-bold uppercase tracking-wider text-primary">Teacher Dashboard</AlertTitle>
+                  <AlertTitle className="text-xs font-bold uppercase tracking-wider text-primary">Admin Dashboard</AlertTitle>
                   <AlertDescription className="text-xs">
-                    After setup, you can create multiple rooms from your dashboard. Each room gets a unique invite code to share with students.
+                    After setup, you can create multiple rooms from your dashboard. Each room gets a unique invite code to share with members.
                   </AlertDescription>
                 </Alert>
               )}
 
-              {onboardingData.role === 'student' && (
+              {onboardingData.role === 'member' && (
                 <div className="space-y-2">
                   <Label htmlFor="inviteCode">Invitation Code (Optional)</Label>
                   <div className="relative">
@@ -343,7 +343,7 @@ export default function LoginPage() {
                     />
                   </div>
                   <p className="text-[10px] text-muted-foreground italic px-1">
-                    Enter a Teacher's code to join their workspace.
+                    Enter an Admin's code to join their workspace.
                   </p>
                 </div>
               )}
