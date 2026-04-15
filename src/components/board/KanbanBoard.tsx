@@ -130,9 +130,9 @@ export function KanbanBoard({ boardId, userRole, username, rollNumber, onBack }:
     columns.forEach(colId => {
       const baseCol = collection(db, "boards", activeBoardId, "columns", colId, "tasks")
       
-      if (boardData.ownerId === user.uid) {
-        // Admin sees all tasks on their board
-        const q = query(baseCol, where("ownerId", "==", user.uid))
+      if (boardData.ownerId === user.uid || isAdmin) {
+        // Admin (board owner or promoted admin) sees all tasks on the board
+        const q = query(baseCol, where("ownerId", "==", boardData.ownerId))
         const unsub = onSnapshot(q, 
           (snap) => {
             // Remove old tasks from this column first
@@ -203,7 +203,7 @@ export function KanbanBoard({ boardId, userRole, username, rollNumber, onBack }:
 
   // Backfill assigneeId for older tasks that only have assignee name (admin only)
   React.useEffect(() => {
-    if (!activeBoardId || !boardData || !user || boardData.ownerId !== user.uid) return
+    if (!activeBoardId || !boardData || !user || (boardData.ownerId !== user.uid && !isAdmin)) return
     if (workspaceMembers.length === 0 || tasks.length === 0) return
 
     tasks.forEach(task => {

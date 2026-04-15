@@ -92,14 +92,33 @@ export function RoomDashboard({ userRole, username, onSelectBoard }: RoomDashboa
     const unsubscribes: (() => void)[] = []
 
     if (isAdmin) {
-      // Admins: listen to boards they own
-      const q = query(collection(db, "boards"), where("ownerId", "==", user.uid))
-      const unsub = onSnapshot(q, (snap) => {
-        const owned = snap.docs.map((d) => ({ ...d.data(), id: d.id } as Board))
-        setBoards(owned)
-        setIsLoading(false)
+      // Admins: listen to boards they own AND boards they are a member of
+      const boardMap = new Map<string, Board>()
+      let ownedLoaded = false
+      let memberLoaded = false
+
+      const mergeAndSet = () => {
+        if (ownedLoaded && memberLoaded) {
+          setBoards(Array.from(boardMap.values()))
+          setIsLoading(false)
+        }
+      }
+
+      const qOwned = query(collection(db, "boards"), where("ownerId", "==", user.uid))
+      const unsub1 = onSnapshot(qOwned, (snap) => {
+        snap.docs.forEach((d) => boardMap.set(d.id, { ...d.data(), id: d.id } as Board))
+        ownedLoaded = true
+        mergeAndSet()
       })
-      unsubscribes.push(unsub)
+      unsubscribes.push(unsub1)
+
+      const qMember = query(collection(db, "boards"), where("memberIds", "array-contains", user.uid))
+      const unsub2 = onSnapshot(qMember, (snap) => {
+        snap.docs.forEach((d) => boardMap.set(d.id, { ...d.data(), id: d.id } as Board))
+        memberLoaded = true
+        mergeAndSet()
+      })
+      unsubscribes.push(unsub2)
     } else {
       // Members: listen to boards they're a member of
       const q = query(collection(db, "boards"), where("memberIds", "array-contains", user.uid))
